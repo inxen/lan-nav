@@ -23,6 +23,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        # 启用 QEMU 模拟，让 x86 runner 能交叉构建 ARM/POWER/s390x 等架构
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -50,6 +54,11 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          # 多架构镜像：覆盖市面主流部署平台。
+          # amd64=通用 x86_64 服务器/桌面；arm64=Apple Silicon / 树莓派4-5 / ARM 云(Graviton)；
+          # arm/v7=树莓派2-3(32位)；arm/v6=树莓派1/Zero；ppc64le=IBM POWER；s390x=IBM Z。
+          # riscv64 因仍处实验阶段、QEMU/registry 支持不稳定，暂不纳入以免拖垮整体构建。
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/ppc64le,linux/s390x
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

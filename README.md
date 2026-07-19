@@ -13,7 +13,7 @@
 
 ## 快速开始（Docker）
 
-镜像由 GitHub Actions 自动构建并推送到 `ghcr.io`：
+镜像由 GitHub Actions 自动构建并推送到 `ghcr.io`，**多架构（amd64 / arm64 / arm/v7 / arm/v6 / ppc64le / s390x）**，会自动匹配你的平台：
 
 ```bash
 docker run -d \
