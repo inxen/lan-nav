@@ -1,0 +1,38 @@
+# ---- 用户数据（切勿打进镜像）----
+data/
+*.db
+*.db-*
+*.db-wal
+*.db-shm
+*.db-journal
+
+# ---- 编译产物 ----
+lan-nav
+lan-nav.exe
+backend/lan-nav
+backend/lan-nav.exe
+*.test
+backend/*.test
+
+# ---- 运行期日志 ----
+*.log
+server.log
+backend/server.log
+
+# ---- 运行期上传的 logo / 背景图 ----
+/logos
+backend/logos
+
+# ---- 调试 / 可视化产物 ----
+backend/*.png
+backend/*.jpg
+backend/*.jpeg
+backend/shot*.js
+backend/diag*.js
+
+# ---- 工作区 / IDE ----
+.workbuddy/
+.vscode/
+.idea/
+
+# 保留：backend/web、go.mod、go.sum、*.go

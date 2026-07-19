@@ -1,0 +1,16 @@
+services:
+  lan-nav:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lan-nav:latest
+    container_name: lan-nav
+    ports:
+      - "5725:5725"
+    environment:
+      - DATA_DIR=/data
+      - TZ=Asia/Shanghai
+    # 用户数据（数据库 + 上传的 logo）统一落在宿主机 ./data，方便打包迁移
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

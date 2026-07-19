@@ -1,0 +1,50 @@
+# lan-nav 反向代理示例（单边缘，前面无 CDN / 其他反代）
+#
+# 作用：用真实 TCP 对端地址「覆盖」X-Forwarded-For 与 X-Real-IP，
+#       使后端 lan-nav 拿到的客户端 IP 无法被公网伪造。
+#       配合后端 adminAllowed()（仅信任可信代理写入的转发头、拒绝任何 IPv6），
+#       公网伪造私网 IP 进后台在原理上被彻底封死。
+#
+# 部署前提：lan-nav 与 nginx 同机；lan-nav 监听 127.0.0.1:5725（或 0.0.0.0:5725 亦可）。
+
+server {
+    listen 80;
+    server_name nav.example.com;   # 改成你的域名或 _
+
+    # 主页等公开内容：公网与局域网都能访问，公网仅能看到主页
+    location / {
+        proxy_pass http://127.0.0.1:5725;
+        proxy_set_header Host $host;
+
+        # —— 关键：覆盖而非追加，杜绝客户端伪造的 XFF 前缀生效 ——
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 若你的 lan-nav 直接绑定 0.0.0.0，下面这块可选：
+    # 仅在内网暴露 /admin，公网连 admin 路径都直接拒（再叠加一层网络层防护）。
+    # location ^~ /admin {
+    #     allow 192.168.1.0/24;   # 改成你的私网 CIDR
+    #     deny all;
+    #     proxy_pass http://127.0.0.1:5725;
+    #     proxy_set_header Host $host;
+    #     proxy_set_header X-Real-IP $remote_addr;
+    #     proxy_set_header X-Forwarded-For $remote_addr;
+    # }
+}
+
+# ============ 可选：进一步硬化（推荐公网部署） ============
+# 让 lan-nav 只监听本机，强制所有流量经 nginx：
+#   启动：./lan-nav --port 5725   （默认监听 0.0.0.0）
+#   硬化：修改 backend/main.go 中 r.Run("0.0.0.0:"+port)
+#         -> r.Run("127.0.0.1:"+port)
+#        并配合防火墙只放行 80/443 入站。
+# 这样即使有人直连 5725 端口，也只能来自本机（nginx），
+# 后端 clientIP() 会判定对端为可信代理才信任转发头。
+#
+# 若 nginx / CDN 部署在另一台「公网」机器（对端为公网 IP，非私网），
+# 需把其边缘节点 IP 通过环境变量 TRUSTED_PROXY（逗号分隔 IP/CIDR）声明为可信代理，
+# 后端才会信任其转发的真实客户端 IP。
+# 注：同网段私网对端（如网关 10.1.1.1）已被 isTrustedProxy 默认信任，无需额外声明。

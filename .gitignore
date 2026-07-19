@@ -1,0 +1,47 @@
+# ---- 数据库（含配置与数据，切勿提交）----
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+/nav.db
+/fresh*.db
+/test*.db
+/data.db
+
+# ---- 统一用户数据目录（数据库 + 上传 logo，Docker 挂载卷）----
+data/
+
+# ---- 编译产物 ----
+lan-nav
+lan-nav.exe
+*.test
+backend/*.test
+
+# ---- 运行期生成 ----
+server.log
+*.log
+/nul
+nul
+
+# ---- 运行期上传的 logo / 背景图 ----
+/logos/*
+
+# ---- 开发/调试/可视化产物（非源码）----
+*.png
+*.jpg
+*.jpeg
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- 冗余配置快照（配置实际存于数据库）----
+/settings.json
+
+# ---- Go ----
+vendor/
+
+# ---- 本地项目数据（记忆/日志，非源码）----
+.workbuddy/

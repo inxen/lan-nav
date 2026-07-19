@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>配置管理 - 导航</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="admin">
+    <header class="admin-header">
+      <h1>配置管理</h1>
+      <button class="back-btn" onclick="location.href='/'">← 返回首页</button>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="sites">站点书签</button>
+      <button class="tab" data-tab="groups">站点分组</button>
+      <button class="tab" data-tab="engines">搜索引擎</button>
+      <button class="tab" data-tab="settings">其他设置</button>
+    </nav>
+
+    <!-- 站点书签 -->
+    <div class="panel show" id="panel-sites">
+      <form class="form" id="site-form" onsubmit="return false">
+        <h3 id="site-form-title">添加站点</h3>
+        <input type="hidden" id="site-id">
+        <div class="form-grid">
+          <label class="field"><span>名称</span><input id="site-name" placeholder="GitHub"></label>
+          <label class="field"><span>URL</span><input id="site-url" placeholder="https://github.com"></label>
+          <div class="field logo-field">
+            <span>Logo</span>
+            <div class="logo-controls">
+              <div class="logo-preview-row">
+                <div class="logo-preview-box" id="logo-preview-box">
+                  <span class="logo-placeholder">无</span>
+                </div>
+                <div class="logo-actions">
+                  <label class="btn-file">
+                    <span id="upload-text">本地上传</span>
+                    <input type="file" id="logo-file" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/x-icon,image/webp">
+                  </label>
+                  <button type="button" class="btn-clear" id="logo-clear-btn" style="display:none" onclick="clearLogo('logo')">清除</button>
+                </div>
+              </div>
+              <div class="logo-fetch-row">
+                <input id="logo-fetch-url" placeholder="或粘贴图片链接下载到本地">
+                <button type="button" class="btn-fetch" id="logo-fetch-btn" onclick="fetchLogo('logo')">抓取</button>
+              </div>
+              <div class="logo-path" id="logo-path" style="display:none"></div>
+              <div class="logo-error" id="logo-error" style="display:none"></div>
+            </div>
+          </div>
+          <label class="field"><span>所属分组</span>
+            <select id="site-group"></select>
+          </label>
+          <label class="field"><span>排序</span><input type="number" id="site-sort" value="0"></label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-primary" onclick="saveSite()">添加</button>
+          <button type="button" class="btn-ghost" id="site-cancel" style="display:none" onclick="resetSite()">取消</button>
+        </div>
+      </form>
+      <div class="list" id="site-list"></div>
+    </div>
+
+    <!-- 站点分组 -->
+    <div class="panel" id="panel-groups">
+      <form class="form" id="group-form" onsubmit="return false">
+        <h3 id="group-form-title">添加分组</h3>
+        <input type="hidden" id="group-id">
+        <div class="form-grid">
+          <label class="field"><span>分组名称</span><input id="group-name" placeholder="常用"></label>
+          <label class="field"><span>可见场景</span>
+            <select id="group-scenes">
+              <option value="both">局域网 + 公网</option>
+              <option value="lan">仅局域网</option>
+              <option value="wan">仅公网</option>
+            </select>
+          </label>
+          <label class="field"><span>排序</span><input type="number" id="group-sort" value="0"></label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-primary" onclick="saveGroup()">添加</button>
+          <button type="button" class="btn-ghost" id="group-cancel" style="display:none" onclick="resetGroup()">取消</button>
+        </div>
+      </form>
+      <div class="list" id="group-list"></div>
+    </div>
+
+    <!-- 搜索引擎 -->
+    <div class="panel" id="panel-engines">
+      <form class="form" id="engine-form" onsubmit="return false">
+        <h3 id="engine-form-title">添加引擎</h3>
+        <input type="hidden" id="engine-id">
+        <div class="form-grid">
+          <label class="field"><span>名称</span><input id="engine-name" placeholder="Google"></label>
+          <label class="field"><span>搜索模板（%s 为关键词占位）</span><input id="engine-url" placeholder="https://google.com/search?q=%s"></label>
+          <div class="field logo-field">
+            <span>图标 Logo</span>
+            <div class="logo-controls">
+              <div class="logo-preview-row">
+                <div class="logo-preview-box" id="elogo-preview-box">
+                  <span class="logo-placeholder">无</span>
+                </div>
+                <div class="logo-actions">
+                  <label class="btn-file">
+                    <span id="elogo-upload-text">本地上传</span>
+                    <input type="file" id="elogo-file" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/x-icon,image/webp">
+                  </label>
+                  <button type="button" class="btn-clear" id="elogo-clear-btn" style="display:none" onclick="clearLogo('elogo')">清除</button>
+                </div>
+              </div>
+              <div class="logo-fetch-row">
+                <input id="elogo-fetch-url" placeholder="或粘贴图片链接下载到本地">
+                <button type="button" class="btn-fetch" id="elogo-fetch-btn" onclick="fetchLogo('elogo')">抓取</button>
+              </div>
+              <div class="logo-path" id="elogo-path" style="display:none"></div>
+              <div class="logo-error" id="elogo-error" style="display:none"></div>
+            </div>
+          </div>
+          <label class="field"><span>建议 API（可选，%s 占位）</span><input id="engine-suggest" placeholder="https://suggestqueries.google.com/complete/search?client=firefox&q=%s"></label>
+          <label class="field"><span>可用场景</span>
+            <select id="engine-scopes">
+              <option value="lan,wan">局域网 + 公网</option>
+              <option value="lan">仅局域网</option>
+              <option value="wan">仅公网</option>
+            </select>
+          </label>
+          <label class="field checkbox"><input type="checkbox" id="engine-default-lan"><span>局域网默认引擎</span></label>
+          <label class="field checkbox"><input type="checkbox" id="engine-default-wan"><span>公网默认引擎</span></label>
+          <label class="field"><span>排序</span><input type="number" id="engine-sort" value="0"></label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-primary" onclick="saveEngine()">添加</button>
+          <button type="button" class="btn-ghost" id="engine-cancel" style="display:none" onclick="resetEngine()">取消</button>
+        </div>
+      </form>
+      <div class="list" id="engine-list"></div>
+    </div>
+
+    <!-- 其他设置 -->
+    <div class="panel" id="panel-settings">
+      <form class="form" id="settings-form" onsubmit="return false">
+        <h3>其他设置</h3>
+        <div class="form-grid">
+          <label class="field"><span>站点名称</span><input id="setting-title" placeholder="我的导航"></label>
+          <label class="field checkbox"><input type="checkbox" id="setting-show-title"><span>在首页显示站点名称</span></label>
+
+          <label class="field full"><span>主题外观</span>
+            <select id="setting-theme">
+              <option value="candy">糖果 · 粉紫</option>
+              <option value="mint">薄荷 · 清新</option>
+              <option value="sunset">晚霞 · 暖橙</option>
+              <option value="ocean">海洋 · 蓝绿</option>
+              <option value="lavender">薰衣草 · 紫调</option>
+              <option value="dark">暗夜 · 奶油黑</option>
+              <option value="snow">纯雪 · 极简白</option>
+            </select>
+          </label>
+
+          <label class="field full"><span>局域网网段（逗号分隔，如 10.0.0.0/16,192.168.0.0/16）</span>
+            <input id="setting-lan-cidrs" placeholder="留空则按私有地址判定"></label>
+
+          <label class="field full"><span>页脚内容</span>
+            <textarea id="setting-footer-html" rows="3" placeholder="支持文字；勾选下方选项后可写 HTML"></textarea></label>
+          <label class="field checkbox"><input type="checkbox" id="setting-footer-html-enable"><span>页脚内容按 HTML 渲染</span></label>
+
+          <label class="field full"><span>背景图片（上传本地图片，或填写图片 URL）</span>
+            <span class="bg-upload-row">
+              <input type="file" id="setting-bg-file" accept="image/*">
+              <button type="button" class="btn-small" onclick="uploadBg()">上传背景图</button>
+            </span>
+            <input id="setting-bg-image" placeholder="留空则使用主题渐变背景；也可填图床直链 http(s)://...">
+            <label class="field checkbox" style="margin-top:8px">
+              <input type="checkbox" id="setting-bg-enable"><span>启用自定义背景（关闭后显示主题渐变背景）</span>
+            </label>
+          </label>
+
+          <label class="field full"><span>背景模糊强度：<b id="bg-blur-val">0</b> px</span>
+            <input type="range" id="setting-bg-blur" min="0" max="40" value="0"
+              oninput="document.getElementById('bg-blur-val').textContent=this.value">
+          </label>
+
+          <label class="field full"><span>背景图透明度：<b id="bg-opacity-val">100%</b></span>
+            <input type="range" id="setting-bg-opacity" min="0" max="100" value="100"
+              oninput="document.getElementById('bg-opacity-val').textContent=this.value+'%'">
+          </label>
+
+          <label class="field full"><span>搜索框模糊强度（毛玻璃）：<b id="bar-blur-val">14</b> px</span>
+            <input type="range" id="setting-bar-blur" min="0" max="40" value="14"
+              oninput="document.getElementById('bar-blur-val').textContent=this.value">
+          </label>
+
+          <label class="field full"><span>搜索框透明度：<b id="bar-opacity-val">80%</b></span>
+            <input type="range" id="setting-bar-opacity" min="0" max="100" value="80"
+              oninput="document.getElementById('bar-opacity-val').textContent=this.value+'%'">
+          </label>
+
+          <label class="field full"><span>卡片模糊强度（毛玻璃）：<b id="card-blur-val">14</b> px</span>
+            <input type="range" id="setting-card-blur" min="0" max="40" value="14"
+              oninput="document.getElementById('card-blur-val').textContent=this.value">
+          </label>
+
+          <label class="field full"><span>卡片透明度：<b id="card-opacity-val">80%</b></span>
+            <input type="range" id="setting-card-opacity" min="0" max="100" value="80"
+              oninput="document.getElementById('card-opacity-val').textContent=this.value+'%'">
+          </label>
+          <p class="field-hint">搜索框与卡片的模糊/透明度已独立控制。模糊效果需半透明才可见，透明度越低毛玻璃越明显。</p>
+
+          <label class="field full"><span>卡片大小（桌面端）：<b id="card-size-val">100%</b></span>
+            <input type="range" id="setting-card-size" min="50" max="200" value="100"
+              oninput="document.getElementById('card-size-val').textContent=this.value+'%'">
+          </label>
+
+          <label class="field full"><span>卡片大小（移动端）：<b id="card-size-mobile-val">100%</b></span>
+            <input type="range" id="setting-card-size-mobile" min="50" max="200" value="100"
+              oninput="document.getElementById('card-size-mobile-val').textContent=this.value+'%'">
+          </label>
+
+          <label class="field full"><span>卡片图标大小（桌面端）：<b id="icon-size-val">100%</b></span>
+            <input type="range" id="setting-icon-size" min="50" max="200" value="100"
+              oninput="document.getElementById('icon-size-val').textContent=this.value+'%'">
+          </label>
+
+          <label class="field full"><span>卡片图标大小（移动端）：<b id="icon-size-mobile-val">100%</b></span>
+            <input type="range" id="setting-icon-size-mobile" min="50" max="200" value="100"
+              oninput="document.getElementById('icon-size-mobile-val').textContent=this.value+'%'">
+          </label>
+
+          <label class="field full"><span>卡片文字大小（桌面端）：<b id="text-size-val">100%</b></span>
+            <input type="range" id="setting-text-size" min="50" max="200" value="100"
+              oninput="document.getElementById('text-size-val').textContent=this.value+'%'">
+          </label>
+
+          <label class="field full"><span>卡片文字大小（移动端）：<b id="text-size-mobile-val">100%</b></span>
+            <input type="range" id="setting-text-size-mobile" min="50" max="200" value="100"
+              oninput="document.getElementById('text-size-mobile-val').textContent=this.value+'%'">
+          </label>
+
+          <label class="field full"><span>单行最大卡片数量（桌面端）：<b id="max-cols-val">6</b> 个</span>
+            <input type="range" id="setting-max-cols" min="1" max="12" value="6"
+              oninput="document.getElementById('max-cols-val').textContent=this.value">
+          </label>
+
+          <label class="field full"><span>单行最大卡片数量（移动端）：<b id="max-cols-mobile-val">4</b> 个</span>
+            <input type="range" id="setting-max-cols-mobile" min="1" max="12" value="4"
+              oninput="document.getElementById('max-cols-mobile-val').textContent=this.value">
+          </label>
+
+          <label class="field checkbox" style="margin-top:8px">
+            <input type="checkbox" id="setting-show-group-name"><span>在首页显示分组名称（如"设计素材""影音娱乐"）</span>
+          </label>
+
+          <label class="field checkbox" style="margin-top:8px">
+            <input type="checkbox" id="setting-show-site-name"><span>在卡片下显示站点名称（关闭则仅显示图标）</span>
+          </label>
+
+          <label class="field checkbox" style="margin-top:8px">
+            <input type="checkbox" id="setting-card-border"><span>显示搜索框和卡片白色边框</span>
+          </label>
+
+          <label class="field checkbox" style="margin-top:8px">
+            <input type="checkbox" id="setting-show-scene"><span>显示右下角场景图标（局域网WiFi/公网地球）</span>
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-primary" onclick="saveSettings()">保存设置</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>
