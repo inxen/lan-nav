@@ -21,6 +21,10 @@ server {
         proxy_set_header X-Forwarded-For $remote_addr;
 
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 后台上传图标/背景图为 multipart，默认 1m 太小会被 413 拒绝。
+        # 10m 足够覆盖一般图片；如需更大可上调。
+        client_max_body_size 10m;
     }
 
     # 若你的 lan-nav 直接绑定 0.0.0.0，下面这块可选：

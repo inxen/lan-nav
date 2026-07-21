@@ -69,17 +69,21 @@ func hostAllowed(host string) error {
 	return nil
 }
 
-// safeHTTPClient 返回一个禁止访问私有/内网地址、且重定向也会被校验的 HTTP 客户端。
-func safeHTTPClient(timeout time.Duration) *http.Client {
+// newHTTPClient 创建 HTTP 客户端。
+//   - blockInternal=true：拒绝私有/内网地址（用于公开 favicon 接口，防止被公网访客当作 SSRF 跳板）；
+//   - blockInternal=false：允许内网地址（用于管理后台抓取局域网图标，管理员已受 IP 白名单保护）。
+//
+// 两种情况都会校验重定向协议（禁止 ftp:// file:// 等），并在解析域名后校验整组地址（防 DNS 重绑定）。
+func newHTTPClient(timeout time.Duration, blockInternal bool) *http.Client {
 	tr := &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			host, _, err := net.SplitHostPort(addr)
 			if err != nil {
 				return nil, err
 			}
-			// 已是 IP 字面量：直接校验
+			// 已是 IP 字面量：按需校验
 			if ip := net.ParseIP(host); ip != nil {
-				if isBlockedIP(ip) {
+				if blockInternal && isBlockedIP(ip) {
 					return nil, fmt.Errorf("拒绝连接被禁止地址 %s", host)
 				}
 				d := net.Dialer{Timeout: 5 * time.Second}
@@ -93,9 +97,11 @@ func safeHTTPClient(timeout time.Duration) *http.Client {
 			if len(ips) == 0 {
 				return nil, fmt.Errorf("无法解析 %s", host)
 			}
-			for _, ipa := range ips {
-				if isBlockedIP(ipa.IP) {
-					return nil, fmt.Errorf("拒绝连接被禁止地址 %s", host)
+			if blockInternal {
+				for _, ipa := range ips {
+					if isBlockedIP(ipa.IP) {
+						return nil, fmt.Errorf("拒绝连接被禁止地址 %s", host)
+					}
 				}
 			}
 			// 校验通过，仍按原域名连接（保证 TLS SNI / Host 头正确）
@@ -117,8 +123,10 @@ func safeHTTPClient(timeout time.Duration) *http.Client {
 			if u.Scheme != "http" && u.Scheme != "https" {
 				return fmt.Errorf("不支持的重定向协议: %s", u.Scheme)
 			}
-			if err := hostAllowed(u.Hostname()); err != nil {
-				return err
+			if blockInternal {
+				if err := hostAllowed(u.Hostname()); err != nil {
+					return err
+				}
 			}
 			return nil
 		},

@@ -81,7 +81,8 @@ func handleUploadLogo(logosDir string) gin.HandlerFunc {
 	}
 }
 
-var safeLogoClient = safeHTTPClient(10 * time.Second)
+// 管理后台抓取：管理员已受 IP 白名单保护，允许抓取局域网/内网地址（这是本产品的核心用法）。
+var adminLogoClient = newHTTPClient(10*time.Second, false)
 
 // handleFetchLogo 从 URL 下载图片到本地
 // POST /api/admin/fetch-logo  {"url": "https://..."}
@@ -108,12 +109,10 @@ func handleFetchLogo(logosDir string) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "url 格式错误"})
 			return
 		}
-		if err := hostAllowed(u.Hostname()); err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"error": "目标地址被禁止（私有/内网地址）"})
-			return
-		}
+		// 注：管理后台接口（/api/admin/fetch-logo）已受 IP 白名单保护，
+		// 因此允许抓取局域网/内网地址，不做 SSRF 拦截（详见 adminLogoClient）。
 
-		resp, err := safeLogoClient.Get(body.URL)
+		resp, err := adminLogoClient.Get(body.URL)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "下载失败: " + err.Error()})
 			return

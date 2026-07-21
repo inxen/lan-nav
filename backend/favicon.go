@@ -34,7 +34,7 @@ func (fc *faviconCache) set(key string, data []byte) {
 	fc.store[key] = data
 }
 
-var safeFavClient = safeHTTPClient(6 * time.Second)
+var safeFavClient = newHTTPClient(6*time.Second, true) // 公开接口：阻断内网地址，防 SSRF
 
 // handleFavicon 代理获取站点 favicon 并缓存
 // GET /api/favicon?url=https://github.com
