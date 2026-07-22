@@ -31,7 +31,7 @@ func clientIPInfo(r *http.Request) clientInfo {
 	if !isTrustedProxy(peer) {
 		return clientInfo{IP: peer, Proxied: false}
 	}
-	// 仅本机回环 / 本机其它网卡 IP（如 nginx 经 10.1.0.148 等同机 IP 连接）等可信代理，
+	// 仅本机回环 / 本机其它网卡 IP（如 nginx 经 192.168.1.10 等同机 IP 连接）等可信代理，
 	// 才信任其写入的 X-Real-IP / X-Forwarded-For。
 	if xri := strings.TrimSpace(r.Header.Get("X-Real-IP")); xri != "" {
 		return clientInfo{IP: xri, Proxied: true}
@@ -58,8 +58,8 @@ var warnNoForwardOnce sync.Once
 //
 // 可信代理包括：
 //   - 本机回环（127.0.0.1 / ::1）；
-//   - 本机其它网卡 IP（nginx 与 lan-nav 同机，但经 10.1.0.148 等非回环 IP 连接）；
-//   - 私网对端（如网关/反代所在的私网段，例：10.1.1.1）——它们转发真实客户端 IP，
+//   - 本机其它网卡 IP（nginx 与 lan-nav 同机，但经 192.168.1.10 等非回环 IP 连接）；
+//   - 私网对端（如网关/反代所在的私网段，例：10.0.0.1）——它们转发真实客户端 IP，
 //     应被信任；公网直连的对端是公网 IP，不会命中此处，故无法伪造转发头绕过白名单；
 //   - 环境变量 TRUSTED_PROXY 显式声明的代理 IP/CIDR（用于反代部署在公网/其它网段的场景，
 //     例如 Cloudflare 等 CDN 的边缘节点）。
@@ -78,7 +78,7 @@ func isTrustedProxy(ipStr string) bool {
 	if localIPs[ip.String()] {
 		return true
 	}
-	// 私网对端默认视为可信代理（网关/反代通常位于私网段，如 10.1.1.1）。
+	// 私网对端默认视为可信代理（网关/反代通常位于私网段，如 10.0.0.1）。
 	// 公网直连的对端是公网 IP，不会被此处命中，因此无法冒充私网客户端绕过白名单。
 	if ip.IsPrivate() {
 		return true

@@ -48,6 +48,17 @@ func decodeBody(body []byte, contentType string) []byte {
 // GET /api/suggest?engine_id=1&q=keyword
 func handleSuggest(store *Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 同源校验：防止其他网站盗用本接口当作免费搜索建议代理。
+		// 白名单为空时关闭校验（向后兼容）；局域网/本机访问始终放行（与后台信任模型一致）。
+		if allowed := store.GetSetting("allowed_domains", ""); allowed != "" {
+			ip := clientIP(c.Request)
+			lanCIDRs := store.GetSetting("lan_cidrs", "")
+			if !isInLAN(ip, lanCIDRs) && !originAllowed(c.Request, allowed) {
+				c.JSON(http.StatusForbidden, gin.H{"suggestions": []string{}, "error": "不允许的来源（同源校验）"})
+				return
+			}
+		}
+
 		engineIDStr := c.Query("engine_id")
 		q := c.Query("q")
 		if q == "" || strings.TrimSpace(q) == "" {
@@ -179,4 +190,77 @@ func parseSuggestions(body []byte) []string {
 	}
 
 	return []string{}
+}
+
+// originAllowed 校验请求是否来自允许的域名（同源校验，防止其他网站盗用 /api/suggest）
+// allowed 为逗号分隔的域名白名单（可带端口，如 example.com 或 example.com:20080）
+// 白名单为空时视为关闭校验（调用方应自行判断）
+func originAllowed(r *http.Request, allowed string) bool {
+	allowed = strings.TrimSpace(allowed)
+	if allowed == "" {
+		return true
+	}
+	allowedHosts := parseHosts(allowed)
+	if len(allowedHosts) == 0 {
+		return true
+	}
+	// 优先用 Origin，其次 Referer；两者都取不到（同源简单请求/命令行工具）则放行
+	host := originHost(r)
+	if host == "" {
+		return true
+	}
+	reqHost, reqPort := splitHostPort(host)
+	for _, a := range allowedHosts {
+		allowHost, allowPort := splitHostPort(a)
+		// 主机名相同，且端口未冲突（任一未指定端口即视为通配该端口）则放行
+		if allowHost == reqHost && (allowPort == "" || reqPort == "" || allowPort == reqPort) {
+			return true
+		}
+	}
+	return false
+}
+
+// originHost 从 Origin 或 Referer 头提取 host（含端口）
+func originHost(r *http.Request) string {
+	if o := r.Header.Get("Origin"); o != "" {
+		if u, err := url.Parse(o); err == nil && u.Host != "" {
+			return u.Host
+		}
+	}
+	if ref := r.Header.Get("Referer"); ref != "" {
+		if u, err := url.Parse(ref); err == nil && u.Host != "" {
+			return u.Host
+		}
+	}
+	return ""
+}
+
+// parseHosts 按逗号拆分并去除空白，过滤空项
+func parseHosts(s string) []string {
+	var out []string
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		out = append(out, part)
+	}
+	return out
+}
+
+// splitHostPort 拆分 host 与 port（兼容 IPv6 [::1]:8080）
+func splitHostPort(host string) (string, string) {
+	if strings.HasPrefix(host, "[") {
+		if j := strings.Index(host, "]"); j != -1 {
+			port := ""
+			if len(host) > j+1 && host[j+1] == ':' {
+				port = host[j+2:]
+			}
+			return host[1:j], port
+		}
+	}
+	if i := strings.LastIndex(host, ":"); i != -1 {
+		return host[:i], host[i+1:]
+	}
+	return host, ""
 }

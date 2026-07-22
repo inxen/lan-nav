@@ -326,6 +326,7 @@ func (s *Store) GetConfig() (*ConfigResponse, error) {
 	showGroupName := s.GetSetting("show_group_name", "1") == "1"
 	showScene := s.GetSetting("show_scene", "1") == "1"
 	cardBorder := s.GetSetting("card_border", "1") == "1"
+	allowedDomains := s.GetSetting("allowed_domains", "")
 	cardSize := atoiDefault(s.GetSetting("card_size", "100"), 100)
 	cardSizeMobile := atoiDefault(s.GetSetting("card_size_mobile", "100"), 100)
 	iconSize := atoiDefault(s.GetSetting("icon_size", "100"), 100)
@@ -356,6 +357,7 @@ func (s *Store) GetConfig() (*ConfigResponse, error) {
 		ShowGroupName:    showGroupName,
 		ShowScene:        showScene,
 		CardBorder:       cardBorder,
+		AllowedDomains:   allowedDomains,
 		CardSize:         cardSize,
 		CardSizeMobile:   cardSizeMobile,
 		IconSize:         iconSize,

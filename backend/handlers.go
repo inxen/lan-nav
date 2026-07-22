@@ -198,6 +198,7 @@ func (h *Handlers) updateSettings(c *gin.Context) {
 		ShowGroupName    bool   `json:"show_group_name"`
 		ShowScene        bool   `json:"show_scene"`
 		CardBorder       bool   `json:"card_border"`
+		AllowedDomains   string `json:"allowed_domains"`
 		CardSize         int    `json:"card_size"`
 		CardSizeMobile   int    `json:"card_size_mobile"`
 		IconSize         int    `json:"icon_size"`
@@ -219,6 +220,21 @@ func (h *Handlers) updateSettings(c *gin.Context) {
 		}
 		if _, _, err := net.ParseCIDR(cidr); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的网段格式: " + cidr})
+			return
+		}
+	}
+	// 校验允许的域名白名单格式（同源校验用，防止 /api/suggest 被其他网站盗用）
+	for _, raw := range strings.Split(body.AllowedDomains, ",") {
+		d := strings.TrimSpace(raw)
+		if d == "" {
+			continue
+		}
+		if strings.HasPrefix(strings.ToLower(d), "http://") || strings.HasPrefix(strings.ToLower(d), "https://") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "域名请勿包含协议前缀(http://): " + d})
+			return
+		}
+		if strings.ContainsAny(d, " /\\@'\"") || strings.Count(d, ":") > 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的域名格式: " + d})
 			return
 		}
 	}
@@ -386,6 +402,10 @@ func (h *Handlers) updateSettings(c *gin.Context) {
 		cardBorder = "1"
 	}
 	if err := h.store.SetSetting("card_border", cardBorder); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.store.SetSetting("allowed_domains", body.AllowedDomains); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

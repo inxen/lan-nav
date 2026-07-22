@@ -60,7 +60,6 @@ func main() {
 	defer store.Close()
 
 	h := newHandlers(store)
-	fc := newFaviconCache()
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
@@ -70,7 +69,6 @@ func main() {
 	{
 		api.GET("/config", h.getConfig)
 		api.GET("/scene", h.detectScene)
-		api.GET("/favicon", handleFavicon(fc))
 		api.GET("/suggest", handleSuggest(store))
 	}
 

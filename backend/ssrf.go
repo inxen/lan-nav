@@ -70,7 +70,7 @@ func hostAllowed(host string) error {
 }
 
 // newHTTPClient 创建 HTTP 客户端。
-//   - blockInternal=true：拒绝私有/内网地址（用于公开 favicon 接口，防止被公网访客当作 SSRF 跳板）；
+//   - blockInternal=true：拒绝私有/内网地址（保留给需要公开出网的代理场景，防止被当作 SSRF 跳板）；
 //   - blockInternal=false：允许内网地址（用于管理后台抓取局域网图标，管理员已受 IP 白名单保护）。
 //
 // 两种情况都会校验重定向协议（禁止 ftp:// file:// 等），并在解析域名后校验整组地址（防 DNS 重绑定）。

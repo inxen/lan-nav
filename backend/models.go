@@ -54,6 +54,7 @@ type ConfigResponse struct {
 	ShowGroupName    bool     `json:"show_group_name"`   // 是否在首页显示分组名称标题（默认true）
 	ShowScene        bool     `json:"show_scene"`        // 是否显示右下角场景图标（局域网WiFi/公网地球）
 	CardBorder       bool     `json:"card_border"`       // 是否显示搜索框和卡片的白色边框线条
+	AllowedDomains   string   `json:"allowed_domains"`   // 允许调用 /api/suggest 的域名白名单（逗号分隔，可带端口），空则关闭同源校验
 	CardSize         int      `json:"card_size"`         // 卡片大小（桌面端，% 默认100，范围50-200）
 	CardSizeMobile   int      `json:"card_size_mobile"`  // 卡片大小（移动端，% 默认100，范围50-200）
 	IconSize         int    `json:"icon_size"`         // 卡片图标大小（桌面端，% 默认100，范围50-200）

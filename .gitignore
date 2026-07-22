@@ -14,6 +14,7 @@ data/
 # ---- 编译产物 ----
 lan-nav
 lan-nav.exe
+*.exe
 *.test
 backend/*.test
 

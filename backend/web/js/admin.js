@@ -5,12 +5,12 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
 
-// 站点图标地址：优先 logo_url，否则回退到后端 favicon 代理（与首页一致）
+// 站点图标地址：优先 logo_url，否则用客户端 favicon（公共图标服务，服务端不代发请求）
 function logoSrc(s) {
   if (s.logo_url) return s.logo_url;
   try {
     const u = new URL(s.url);
-    return '/api/favicon?url=' + encodeURIComponent(u.hostname);
+    return 'https://icons.duckduckgo.com/ip3/' + encodeURIComponent(u.hostname) + '.ico';
   } catch (e) {
     return '';
   }
@@ -198,6 +198,7 @@ function renderSettings() {
   $('#setting-show-site-name').checked = config.show_site_name !== false;
   $('#setting-show-scene').checked = !!config.show_scene;
   $('#setting-card-border').checked = config.card_border !== false;
+  $('#setting-allowed-domains').value = config.allowed_domains || '';
 }
 
 async function saveSettings() {
@@ -228,6 +229,7 @@ async function saveSettings() {
     show_site_name: $('#setting-show-site-name').checked,
     show_scene: $('#setting-show-scene').checked,
     card_border: $('#setting-card-border').checked,
+    allowed_domains: $('#setting-allowed-domains').value.trim(),
   };
   try {
     await api('PUT', '/api/admin/settings', body);

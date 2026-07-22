@@ -9,7 +9,7 @@ import (
 
 // TestHTTPClient_Internal 验证 newHTTPClient 的 blockInternal 开关：
 //   - false（管理后台抓取）：允许内网/回环地址；
-//   - true（公开 favicon）：拒绝内网/回环地址。
+//   - true：拒绝内网/回环地址（公开代理场景）。
 func TestHTTPClient_Internal(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

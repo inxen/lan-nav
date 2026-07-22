@@ -213,8 +213,18 @@ function initScrollProgress() {
   update();
 }
 
+// 客户端 favicon：直接走公共图标服务，服务端不再代发请求（去除 SSRF / 缓存 DoS 面）
+function faviconUrl(rawUrl) {
+  try {
+    const host = new URL(rawUrl).hostname;
+    return 'https://icons.duckduckgo.com/ip3/' + encodeURIComponent(host) + '.ico';
+  } catch (_) {
+    return '';
+  }
+}
+
 function renderSiteCard(s) {
-  const src = s.logo_url || `/api/favicon?url=${encodeURIComponent(s.url)}`;
+  const src = s.logo_url || faviconUrl(s.url);
   const showName = config.show_site_name !== false; // 默认显示
   const nameHtml = showName ? `<div class="site-name">${esc(s.name)}</div>` : '';
   return `
@@ -239,7 +249,7 @@ function engineIconHtml(e) {
   if (!src) {
     try {
       const origin = new URL(e.url_template.replace('%s', '')).origin;
-      src = '/api/favicon?url=' + encodeURIComponent(origin);
+      src = faviconUrl(origin);
     } catch (_) { src = ''; }
   }
   if (src) return `<img src="${esc(src)}" alt="${esc(e.name)}" onerror="this.style.display='none'">`;
