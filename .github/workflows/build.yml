@@ -1,9 +1,9 @@
-name: Docker
+name: Build & Release
 
 # 触发时机：
-#   - 推送到 main 分支 → 构建并推送 latest 镜像
-#   - 打 v* tag（如 v1.2.3）→ 额外构建并推送语义版本标签
-#   - 发起 PR 到 main → 仅构建验证，不推送
+#   - 推送到 main 分支 → 仅重建 latest Docker 镜像（不发布 Release）
+#   - 打 v* tag（如 v1.0.0）→ 同时：构建多架构 Docker 镜像 + 编译各平台原生二进制并发布 GitHub Release
+#   - 发起 PR 到 main → 仅构建验证（Docker 不推送、不发布 Release）
 on:
   push:
     branches: ["main"]
@@ -11,13 +11,13 @@ on:
   pull_request:
     branches: ["main"]
 
-# ghcr.io 推送需要 packages: write 权限（复用 GITHUB_TOKEN，无需额外 secret）
+# ghcr.io 推送 + GitHub Release 创建/上传都需要写权限（复用 GITHUB_TOKEN，无需额外 secret）
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
-  build:
+  docker:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -57,7 +57,6 @@ jobs:
           # 多架构镜像：覆盖市面主流部署平台。
           # amd64=通用 x86_64 服务器/桌面；arm64=Apple Silicon / 树莓派4-5 / ARM 云(Graviton)；
           # arm/v7=树莓派2-3(32位)；arm/v6=树莓派1/Zero；ppc64le=IBM POWER；s390x=IBM Z。
-          # riscv64 因仍处实验阶段、QEMU/registry 支持不稳定，暂不纳入以免拖垮整体构建。
           platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/ppc64le,linux/s390x
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -65,3 +64,48 @@ jobs:
           # 利用 GitHub Actions 缓存加速层构建
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  release:
+    # 仅在打 v* tag 时构建原生二进制并发布 GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { goos: linux,   goarch: amd64 }
+          - { goos: linux,   goarch: arm64 }
+          - { goos: linux,   goarch: arm,    goarm: "7" }
+          - { goos: linux,   goarch: arm,    goarm: "6" }
+          - { goos: linux,   goarch: ppc64le }
+          - { goos: linux,   goarch: s390x }
+          - { goos: darwin,  goarch: amd64 }
+          - { goos: darwin,  goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+          - { goos: windows, goarch: arm64 }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Build single-file binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: "0"
+        run: |
+          EXT=""
+          if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
+          OUT="dist/lan-nav-${GOOS}-${GOARCH}${GOARM:+v${GOARM}}${EXT}"
+          go build -a -o "$OUT" ./backend
+          echo "built $OUT"
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
