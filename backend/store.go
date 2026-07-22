@@ -317,11 +317,11 @@ func (s *Store) GetConfig() (*ConfigResponse, error) {
 	bgImage := s.GetSetting("bg_image", "")
 	bgBlur := atoiDefault(s.GetSetting("bg_blur", "0"), 0)
 	cardBlur := atoiDefault(s.GetSetting("card_blur", "14"), 14)
-	bgOpacity := atoiDefault(s.GetSetting("bg_opacity", "100"), 100)
-	cardOpacity := atoiDefault(s.GetSetting("card_opacity", "80"), 80)
+	bgBrightness := atoiDefault(s.GetSetting("bg_brightness", "0"), 0)
+	cardBrightness := atoiDefault(s.GetSetting("card_brightness", "0"), 0)
 	// 搜索框独立参数：未设置时回退到卡片值（向后兼容旧库）
 	barBlur := atoiDefault(s.GetSetting("bar_blur", ""), cardBlur)
-	barOpacity := atoiDefault(s.GetSetting("bar_opacity", ""), cardOpacity)
+	barBrightness := atoiDefault(s.GetSetting("bar_brightness", "0"), 0)
 	showSiteName := s.GetSetting("show_site_name", "1") == "1"
 	showGroupName := s.GetSetting("show_group_name", "1") == "1"
 	showScene := s.GetSetting("show_scene", "1") == "1"
@@ -350,9 +350,9 @@ func (s *Store) GetConfig() (*ConfigResponse, error) {
 		BGBlur:           bgBlur,
 		CardBlur:         cardBlur,
 		BarBlur:          barBlur,
-		BGOpacity:        bgOpacity,
-		CardOpacity:      cardOpacity,
-		BarOpacity:       barOpacity,
+		BGBrightness:     bgBrightness,
+		CardBrightness:   cardBrightness,
+		BarBrightness:    barBrightness,
 		ShowSiteName:     showSiteName,
 		ShowGroupName:    showGroupName,
 		ShowScene:        showScene,

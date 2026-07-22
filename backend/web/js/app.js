@@ -88,11 +88,41 @@ function applyBackground(cfg) {
   document.body.classList.toggle('bg-active', !!img);
   root.style.setProperty('--bg-image', img ? `url("${img.replace(/"/g, '\\"')}")` : 'none');
   root.style.setProperty('--bg-blur', ((cfg && cfg.bg_blur) || 0) + 'px');
-  root.style.setProperty('--bg-opacity', ((cfg && cfg.bg_opacity != null) ? cfg.bg_opacity : 100) / 100);
+  // 背景明暗调节：正=白遮罩增亮，负=黑遮罩增暗，0=标准（无遮罩）
+  const bright = (cfg && cfg.bg_brightness != null) ? cfg.bg_brightness : 0;
+  if (bright > 0) {
+    root.style.setProperty('--bg-bright-color', '255, 255, 255');
+    root.style.setProperty('--bg-bright-opacity', bright / 100);
+  } else if (bright < 0) {
+    root.style.setProperty('--bg-bright-color', '0, 0, 0');
+    root.style.setProperty('--bg-bright-opacity', -bright / 100);
+  } else {
+    root.style.setProperty('--bg-bright-opacity', 0);
+  }
   root.style.setProperty('--card-blur', ((cfg && cfg.card_blur != null) ? cfg.card_blur : 14) + 'px');
-  root.style.setProperty('--card-opacity', ((cfg && cfg.card_opacity != null) ? cfg.card_opacity : 80) / 100);
+  // 卡片明暗调节：正=白遮罩增亮，负=黑遮罩增暗，0=标准（无遮罩）
+  const cardBright = (cfg && cfg.card_brightness != null) ? cfg.card_brightness : 0;
+  if (cardBright > 0) {
+    root.style.setProperty('--card-bright-color', '255, 255, 255');
+    root.style.setProperty('--card-bright-opacity', cardBright / 100);
+  } else if (cardBright < 0) {
+    root.style.setProperty('--card-bright-color', '0, 0, 0');
+    root.style.setProperty('--card-bright-opacity', -cardBright / 100);
+  } else {
+    root.style.setProperty('--card-bright-opacity', 0);
+  }
   root.style.setProperty('--bar-blur', ((cfg && cfg.bar_blur != null) ? cfg.bar_blur : 14) + 'px');
-  root.style.setProperty('--bar-opacity', ((cfg && cfg.bar_opacity != null) ? cfg.bar_opacity : 80) / 100);
+  // 搜索框明暗调节：正=白遮罩增亮，负=黑遮罩增暗，0=标准（无遮罩）
+  const barBright = (cfg && cfg.bar_brightness != null) ? cfg.bar_brightness : 0;
+  if (barBright > 0) {
+    root.style.setProperty('--bar-bright-color', '255, 255, 255');
+    root.style.setProperty('--bar-bright-opacity', barBright / 100);
+  } else if (barBright < 0) {
+    root.style.setProperty('--bar-bright-color', '0, 0, 0');
+    root.style.setProperty('--bar-bright-opacity', -barBright / 100);
+  } else {
+    root.style.setProperty('--bar-bright-opacity', 0);
+  }
   // 边框显示开关：控制搜索框和卡片白色线条
   const cardBorder = !(cfg && cfg.card_border === false);
   root.style.setProperty('--card-border-width', cardBorder ? '1px' : '0px');

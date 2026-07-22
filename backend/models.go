@@ -47,9 +47,9 @@ type ConfigResponse struct {
 	BGBlur           int      `json:"bg_blur"`           // 背景图模糊强度（px，0-40）
 	CardBlur         int      `json:"card_blur"`         // 导航卡片模糊强度（px，0-40）
 	BarBlur          int      `json:"bar_blur"`          // 搜索框模糊强度（px，0-40），独立于卡片
-	BGOpacity        int      `json:"bg_opacity"`        // 背景图透明度（0-100，100=完全不透明）
-	CardOpacity      int      `json:"card_opacity"`      // 卡片背景透明度（0-100，默认80，仅影响卡片背景；模糊需半透明才可见）
-	BarOpacity       int      `json:"bar_opacity"`       // 搜索框背景透明度（0-100，默认80，独立于卡片）
+	BGBrightness     int      `json:"bg_brightness"`     // 背景明暗调节（-100=全黑/增暗, 0=标准, +100=全白/增亮）
+	CardBrightness   int      `json:"card_brightness"`   // 卡片明暗调节（-100=增暗, 0=标准, +100=增亮，叠加在标准毛玻璃底色之上）
+	BarBrightness    int      `json:"bar_brightness"`    // 搜索框明暗调节（同上，独立于卡片）
 	ShowSiteName     bool     `json:"show_site_name"`    // 是否在首页卡片下显示站点名称（默认true）
 	ShowGroupName    bool     `json:"show_group_name"`   // 是否在首页显示分组名称标题（默认true）
 	ShowScene        bool     `json:"show_scene"`        // 是否显示右下角场景图标（局域网WiFi/公网地球）

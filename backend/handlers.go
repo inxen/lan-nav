@@ -191,9 +191,9 @@ func (h *Handlers) updateSettings(c *gin.Context) {
 		BGBlur           int    `json:"bg_blur"`
 		CardBlur         int    `json:"card_blur"`
 		BarBlur          int    `json:"bar_blur"`
-		BGOpacity        int    `json:"bg_opacity"`
-		CardOpacity      int    `json:"card_opacity"`
-		BarOpacity       int    `json:"bar_opacity"`
+		BGBrightness     int    `json:"bg_brightness"`
+		CardBrightness   int    `json:"card_brightness"`
+		BarBrightness    int    `json:"bar_brightness"`
 		ShowSiteName     bool   `json:"show_site_name"`
 		ShowGroupName    bool   `json:"show_group_name"`
 		ShowScene        bool   `json:"show_scene"`
@@ -256,17 +256,17 @@ func (h *Handlers) updateSettings(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "搜索框模糊需在 0-40 之间"})
 		return
 	}
-	// 校验透明度范围
-	if body.BGOpacity < 0 || body.BGOpacity > 100 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "背景透明度需在 0-100 之间"})
+	// 校验明暗调节范围（-100=全黑，0=标准，+100=全白）
+	if body.BGBrightness < -100 || body.BGBrightness > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "背景明暗调节需在 -100 到 100 之间"})
 		return
 	}
-	if body.CardOpacity < 0 || body.CardOpacity > 100 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "卡片透明度需在 0-100 之间"})
+	if body.CardBrightness < -100 || body.CardBrightness > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "卡片明暗调节需在 -100 到 100 之间"})
 		return
 	}
-	if body.BarOpacity < 0 || body.BarOpacity > 100 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "搜索框透明度需在 0-100 之间"})
+	if body.BarBrightness < -100 || body.BarBrightness > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "搜索框明暗调节需在 -100 到 100 之间"})
 		return
 	}
 	// 校验卡片大小范围（桌面端 / 移动端，% 50-200）
@@ -361,15 +361,15 @@ func (h *Handlers) updateSettings(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if err := h.store.SetSetting("bg_opacity", strconv.Itoa(body.BGOpacity)); err != nil {
+	if err := h.store.SetSetting("bg_brightness", strconv.Itoa(body.BGBrightness)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if err := h.store.SetSetting("card_opacity", strconv.Itoa(body.CardOpacity)); err != nil {
+	if err := h.store.SetSetting("card_brightness", strconv.Itoa(body.CardBrightness)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if err := h.store.SetSetting("bar_opacity", strconv.Itoa(body.BarOpacity)); err != nil {
+	if err := h.store.SetSetting("bar_brightness", strconv.Itoa(body.BarBrightness)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

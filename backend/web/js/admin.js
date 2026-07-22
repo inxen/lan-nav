@@ -49,11 +49,41 @@ function applyBackground(cfg) {
   document.body.classList.toggle('bg-active', !!img);
   root.style.setProperty('--bg-image', img ? `url("${img.replace(/"/g, '\\"')}")` : 'none');
   root.style.setProperty('--bg-blur', ((cfg && cfg.bg_blur) || 0) + 'px');
-  root.style.setProperty('--bg-opacity', ((cfg && cfg.bg_opacity != null) ? cfg.bg_opacity : 100) / 100);
+  // 背景明暗调节：正=白遮罩增亮，负=黑遮罩增暗，0=标准（无遮罩）
+  const bright = (cfg && cfg.bg_brightness != null) ? cfg.bg_brightness : 0;
+  if (bright > 0) {
+    root.style.setProperty('--bg-bright-color', '255, 255, 255');
+    root.style.setProperty('--bg-bright-opacity', bright / 100);
+  } else if (bright < 0) {
+    root.style.setProperty('--bg-bright-color', '0, 0, 0');
+    root.style.setProperty('--bg-bright-opacity', -bright / 100);
+  } else {
+    root.style.setProperty('--bg-bright-opacity', 0);
+  }
   root.style.setProperty('--card-blur', ((cfg && cfg.card_blur != null) ? cfg.card_blur : 14) + 'px');
-  root.style.setProperty('--card-opacity', ((cfg && cfg.card_opacity != null) ? cfg.card_opacity : 80) / 100);
+  // 卡片明暗调节：正=白遮罩增亮，负=黑遮罩增暗，0=标准（无遮罩）
+  const cardBright = (cfg && cfg.card_brightness != null) ? cfg.card_brightness : 0;
+  if (cardBright > 0) {
+    root.style.setProperty('--card-bright-color', '255, 255, 255');
+    root.style.setProperty('--card-bright-opacity', cardBright / 100);
+  } else if (cardBright < 0) {
+    root.style.setProperty('--card-bright-color', '0, 0, 0');
+    root.style.setProperty('--card-bright-opacity', -cardBright / 100);
+  } else {
+    root.style.setProperty('--card-bright-opacity', 0);
+  }
   root.style.setProperty('--bar-blur', ((cfg && cfg.bar_blur != null) ? cfg.bar_blur : 14) + 'px');
-  root.style.setProperty('--bar-opacity', ((cfg && cfg.bar_opacity != null) ? cfg.bar_opacity : 80) / 100);
+  // 搜索框明暗调节：正=白遮罩增亮，负=黑遮罩增暗，0=标准（无遮罩）
+  const barBright = (cfg && cfg.bar_brightness != null) ? cfg.bar_brightness : 0;
+  if (barBright > 0) {
+    root.style.setProperty('--bar-bright-color', '255, 255, 255');
+    root.style.setProperty('--bar-bright-opacity', barBright / 100);
+  } else if (barBright < 0) {
+    root.style.setProperty('--bar-bright-color', '0, 0, 0');
+    root.style.setProperty('--bar-bright-opacity', -barBright / 100);
+  } else {
+    root.style.setProperty('--bar-bright-opacity', 0);
+  }
   // 边框显示开关：控制搜索框和卡片白色线条
   const cardBorder = !(cfg && cfg.card_border === false);
   root.style.setProperty('--card-border-width', cardBorder ? '1px' : '0px');
@@ -157,19 +187,19 @@ function renderSettings() {
   const barBlur = (config.bar_blur != null) ? config.bar_blur : 14;
   $('#setting-bg-blur').value = bgBlur;
   $('#bg-blur-val').textContent = bgBlur;
-  const bgOpacity = (config.bg_opacity != null) ? config.bg_opacity : 100;
-  const cardOpacity = (config.card_opacity != null) ? config.card_opacity : 80;
-  const barOpacity = (config.bar_opacity != null) ? config.bar_opacity : 80;
-  $('#setting-bg-opacity').value = bgOpacity;
-  $('#bg-opacity-val').textContent = bgOpacity + '%';
-  $('#setting-card-opacity').value = cardOpacity;
-  $('#card-opacity-val').textContent = cardOpacity + '%';
+  const bgBrightness = (config.bg_brightness != null) ? config.bg_brightness : 0;
+  const cardBrightness = (config.card_brightness != null) ? config.card_brightness : 0;
+  const barBrightness = (config.bar_brightness != null) ? config.bar_brightness : 0;
+  $('#setting-bg-brightness').value = bgBrightness;
+  $('#bg-bright-val').textContent = bgBrightness === 0 ? '标准' : (bgBrightness > 0 ? '增亮 ' + bgBrightness + '%' : '增暗 ' + (-bgBrightness) + '%');
+  $('#setting-card-brightness').value = cardBrightness;
+  $('#card-bright-val').textContent = cardBrightness === 0 ? '标准' : (cardBrightness > 0 ? '增亮 ' + cardBrightness + '%' : '增暗 ' + (-cardBrightness) + '%');
   $('#setting-card-blur').value = cardBlur;
   $('#card-blur-val').textContent = cardBlur;
   $('#setting-bar-blur').value = barBlur;
   $('#bar-blur-val').textContent = barBlur;
-  $('#setting-bar-opacity').value = barOpacity;
-  $('#bar-opacity-val').textContent = barOpacity + '%';
+  $('#setting-bar-brightness').value = barBrightness;
+  $('#bar-bright-val').textContent = barBrightness === 0 ? '标准' : (barBrightness > 0 ? '增亮 ' + barBrightness + '%' : '增暗 ' + (-barBrightness) + '%');
   const cardSize = (config.card_size != null) ? config.card_size : 100;
   const cardSizeMobile = (config.card_size_mobile != null) ? config.card_size_mobile : 100;
   $('#setting-card-size').value = cardSize;
@@ -212,9 +242,9 @@ async function saveSettings() {
     bg_enable: $('#setting-bg-enable').checked,
     bg_image: $('#setting-bg-image').value.trim(),
     bg_blur: parseInt($('#setting-bg-blur').value) || 0,
-    bg_opacity: parseInt($('#setting-bg-opacity').value) || 100,
+    bg_brightness: parseInt($('#setting-bg-brightness').value) || 0,
     card_blur: parseInt($('#setting-card-blur').value) || 0,
-    card_opacity: parseInt($('#setting-card-opacity').value) || 0,
+    card_brightness: parseInt($('#setting-card-brightness').value) || 0,
     card_size: parseInt($('#setting-card-size').value) || 100,
     card_size_mobile: parseInt($('#setting-card-size-mobile').value) || 100,
     icon_size: parseInt($('#setting-icon-size').value) || 100,
@@ -224,7 +254,7 @@ async function saveSettings() {
     max_cols: parseInt($('#setting-max-cols').value) || 6,
     max_cols_mobile: parseInt($('#setting-max-cols-mobile').value) || 4,
     bar_blur: parseInt($('#setting-bar-blur').value) || 0,
-    bar_opacity: parseInt($('#setting-bar-opacity').value) || 0,
+    bar_brightness: parseInt($('#setting-bar-brightness').value) || 0,
     show_group_name: $('#setting-show-group-name').checked,
     show_site_name: $('#setting-show-site-name').checked,
     show_scene: $('#setting-show-scene').checked,
@@ -238,6 +268,30 @@ async function saveSettings() {
   } catch (e) {
     alert('保存失败: ' + e.message);
   }
+}
+
+// 背景明暗调节滑钮实时预览（仅在有背景图时可见效果）
+function onBgBrightnessInput(slider) {
+  const v = parseInt(slider.value) || 0;
+  const label = document.getElementById('bg-bright-val');
+  label.textContent = v === 0 ? '标准' : (v > 0 ? '增亮 ' + v + '%' : '增暗 ' + (-v) + '%');
+  const img = $('#setting-bg-image').value.trim();
+  if (img) {
+    applyBackground({
+      bg_enable: $('#setting-bg-enable').checked,
+      bg_image: img,
+      bg_blur: parseInt($('#setting-bg-blur').value) || 0,
+      bg_brightness: v,
+      card_blur: parseInt($('#setting-card-blur').value) || 0,
+      bar_blur: parseInt($('#setting-bar-blur').value) || 0,
+    });
+  }
+}
+
+// 卡片/搜索框明暗调节滑块标签（admin 页无卡片/搜索框实例，仅更新标签；实时效果在首页）
+function setBrightLabel(slider, labelId) {
+  const v = parseInt(slider.value) || 0;
+  document.getElementById(labelId).textContent = v === 0 ? '标准' : (v > 0 ? '增亮 ' + v + '%' : '增暗 ' + (-v) + '%');
 }
 
 // 背景图上传：上传到服务端后回填 URL 输入框，并实时预览
@@ -261,6 +315,7 @@ async function uploadBg() {
       bg_enable: true,
       bg_image: data.path,
       bg_blur: parseInt($('#setting-bg-blur').value) || 0,
+      bg_brightness: parseInt($('#setting-bg-brightness').value) || 0,
       card_blur: parseInt($('#setting-card-blur').value) || 0,
       bar_blur: parseInt($('#setting-bar-blur').value) || 0,
     });

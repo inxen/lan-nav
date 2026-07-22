@@ -185,9 +185,9 @@
               oninput="document.getElementById('bg-blur-val').textContent=this.value">
           </label>
 
-          <label class="field full"><span>背景图透明度：<b id="bg-opacity-val">100%</b></span>
-            <input type="range" id="setting-bg-opacity" min="0" max="100" value="100"
-              oninput="document.getElementById('bg-opacity-val').textContent=this.value+'%'">
+          <label class="field full"><span>背景明暗调节：<b id="bg-bright-val">标准</b>（居中=标准，左=增暗，右=增亮）</span>
+            <input type="range" id="setting-bg-brightness" min="-100" max="100" value="0"
+              oninput="onBgBrightnessInput(this)">
           </label>
 
           <label class="field full"><span>搜索框模糊强度（毛玻璃）：<b id="bar-blur-val">14</b> px</span>
@@ -195,9 +195,9 @@
               oninput="document.getElementById('bar-blur-val').textContent=this.value">
           </label>
 
-          <label class="field full"><span>搜索框透明度：<b id="bar-opacity-val">80%</b></span>
-            <input type="range" id="setting-bar-opacity" min="0" max="100" value="80"
-              oninput="document.getElementById('bar-opacity-val').textContent=this.value+'%'">
+          <label class="field full"><span>搜索框明暗调节：<b id="bar-bright-val">标准</b>（居中=标准，左=增暗，右=增亮）</span>
+            <input type="range" id="setting-bar-brightness" min="-100" max="100" value="0"
+              oninput="setBrightLabel(this, 'bar-bright-val')">
           </label>
 
           <label class="field full"><span>卡片模糊强度（毛玻璃）：<b id="card-blur-val">14</b> px</span>
@@ -205,9 +205,9 @@
               oninput="document.getElementById('card-blur-val').textContent=this.value">
           </label>
 
-          <label class="field full"><span>卡片透明度：<b id="card-opacity-val">80%</b></span>
-            <input type="range" id="setting-card-opacity" min="0" max="100" value="80"
-              oninput="document.getElementById('card-opacity-val').textContent=this.value+'%'">
+          <label class="field full"><span>卡片明暗调节：<b id="card-bright-val">标准</b>（居中=标准，左=增暗，右=增亮）</span>
+            <input type="range" id="setting-card-brightness" min="-100" max="100" value="0"
+              oninput="setBrightLabel(this, 'card-bright-val')">
           </label>
           <p class="field-hint">搜索框与卡片的模糊/透明度已独立控制。模糊效果需半透明才可见，透明度越低毛玻璃越明显。</p>
 

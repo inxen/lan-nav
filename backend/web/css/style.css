@@ -27,11 +27,14 @@
   /* 自定义背景图与模糊（其他设置控制） */
   --bg-image: none;          /* 自定义背景图 url()，空则使用主题渐变 */
   --bg-blur: 0px;            /* 背景图模糊强度 */
-  --bg-opacity: 1;           /* 背景图透明度（0-1） */
+  --bg-bright-color: 255, 255, 255; /* 明暗调节遮罩颜色（白=增亮 / 黑=增暗），rgb 分量 */
+  --bg-bright-opacity: 0;    /* 明暗调节遮罩透明度（0-1，由 bg_brightness 计算，-100→1 黑 / +100→1 白） */
   --card-blur: 14px;         /* 导航卡片模糊强度（毛玻璃） */
   --bar-blur: 14px;          /* 搜索框模糊强度（毛玻璃），独立于卡片 */
-  --card-opacity: 1;         /* 卡片背景透明度（0-1），仅影响背景，不影响 logo/文字 */
-  --bar-opacity: 1;          /* 搜索框背景透明度（0-1），独立于卡片 */
+  --card-bright-color: 255, 255, 255; /* 卡片明暗遮罩颜色（白=增亮 / 黑=增暗），rgb 分量 */
+  --card-bright-opacity: 0;            /* 卡片明暗遮罩透明度（0-1，由 card_brightness 计算） */
+  --bar-bright-color: 255, 255, 255;   /* 搜索框明暗遮罩颜色（白=增亮 / 黑=增暗） */
+  --bar-bright-opacity: 0;             /* 搜索框明暗遮罩透明度（0-1，由 bar_brightness 计算） */
   --card-border-width: 1px;  /* 搜索框和卡片白色边框宽度（0 或 1px） */
   --card-border-color: rgba(255, 255, 255, 0.9);  /* 搜索框和卡片白色边框颜色 */
 
@@ -251,7 +254,7 @@
   --logo-bg: linear-gradient(135deg, #f0f4f8, #e8ecf1);
 }
 
-[data-theme="snow"] .bg-image-layer::after {
+[data-theme="snow"] .bg-image-layer::before {
   background: rgba(255, 255, 255, 0.18);
 }
 
@@ -329,17 +332,25 @@ body::after {
   background-position: center;
   background-repeat: no-repeat;
   filter: blur(var(--bg-blur));
-  opacity: var(--bg-opacity);
+  opacity: 1; /* 背景图始终完全显示；明暗由遮罩层调节 */
   pointer-events: none;
 }
+/* 主题基准可读遮罩（底层，保证卡片在花哨背景上可读；不随明暗调节变化） */
+.bg-image-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.14);
+}
+[data-theme="dark"] .bg-image-layer::before {
+  background: rgba(20, 18, 30, 0.38);
+}
+/* 明暗调节遮罩（顶层）：白=增亮，黑=增暗，透明度由 --bg-bright-opacity 驱动 */
 .bg-image-layer::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.14); /* 轻遮罩，保证卡片内容可读 */
-}
-[data-theme="dark"] .bg-image-layer::after {
-  background: rgba(20, 18, 30, 0.38);
+  background: rgba(var(--bg-bright-color, 255, 255, 255), var(--bg-bright-opacity, 0));
 }
 
 /* 设置自定义背景图后：关闭漂浮光斑与渐变流动动画。
@@ -435,12 +446,12 @@ a {
 .search-bar {
   width: 100%;
   max-width: 660px;
-  background: rgba(255, 255, 255, var(--bar-opacity));
+  background: transparent;
   backdrop-filter: blur(var(--bar-blur));
   -webkit-backdrop-filter: blur(var(--bar-blur));
   border: var(--card-border-width) solid var(--card-border-color);
   border-radius: var(--radius-pill);
-  box-shadow: 0 10px 34px rgba(199, 150, 220, 0.25);
+  box-shadow: 0 10px 34px rgba(199, 150, 220, 0.25), inset 0 0 0 9999px rgba(var(--bar-bright-color, 255, 255, 255), var(--bar-bright-opacity, 0));
   overflow: visible;
   position: relative;
   z-index: 100; /* 确保补全下拉不被下方站点卡片遮挡 */
@@ -730,19 +741,19 @@ a {
   border-radius: var(--radius);
   position: relative;
   animation: fadeIn 0.5s ease both;
-  background: rgba(255, 255, 255, var(--card-opacity));
+  background: transparent;
   backdrop-filter: blur(var(--card-blur));
   -webkit-backdrop-filter: blur(var(--card-blur));
   border: var(--card-border-width) solid var(--card-border-color);
-  box-shadow: 0 10px 34px rgba(199, 150, 220, 0.25);
+  box-shadow: 0 10px 34px rgba(199, 150, 220, 0.25), inset 0 0 0 9999px rgba(var(--card-bright-color, 255, 255, 255), var(--card-bright-opacity, 0));
   transition: transform var(--transition), box-shadow var(--transition), border var(--transition), background var(--transition);
   cursor: pointer;
   text-align: center;
 }
 .site-card:hover {
   transform: translateY(-6px) scale(1.04);
-  box-shadow: 0 14px 32px rgba(168, 139, 250, 0.3);
-  background: rgba(255, 255, 255, calc(var(--card-opacity) + 0.12));
+  box-shadow: 0 14px 32px rgba(168, 139, 250, 0.3), inset 0 0 0 9999px rgba(var(--card-bright-color, 255, 255, 255), var(--card-bright-opacity, 0));
+  background: transparent;
 }
 .site-card:active {
   transform: translateY(-2px) scale(0.99);
@@ -822,10 +833,10 @@ a {
   text-shadow: 0 1px 3px rgba(255, 255, 255, 0.7);
 }
 [data-theme="dark"] .site-card {
-  background: rgba(46, 42, 62, var(--card-opacity));
+  background: transparent;
 }
 [data-theme="dark"] .site-card:hover {
-  background: rgba(46, 42, 62, calc(var(--card-opacity) + 0.12));
+  background: transparent;
 }
 [data-theme="dark"] .site-name {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
