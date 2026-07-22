@@ -102,9 +102,11 @@ jobs:
         run: |
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
-          OUT="dist/lan-nav-${GOOS}-${GOARCH}${GOARM:+v${GOARM}}${EXT}"
-          go build -a -o "$OUT" ./backend
-          echo "built $OUT"
+          NAME="lan-nav-${GOOS}-${GOARCH}${GOARM:+v${GOARM}}${EXT}"
+          mkdir -p dist
+          cd backend
+          go build -a -o "../dist/$NAME" .
+          echo "built $NAME"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
