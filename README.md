@@ -14,7 +14,25 @@
 
 ## 快速开始（Docker）
 
-镜像由 GitHub Actions 自动构建并推送到 `ghcr.io`，**多架构（amd64 / arm64 / arm/v7 / arm/v6 / ppc64le / s390x）**，会自动匹配你的平台：
+镜像由 GitHub Actions 自动构建，**同时推送两个 registry**，均为多架构（amd64 / arm64 / arm/v7 / arm/v6 / ppc64le / s390x），会自动匹配你的平台：
+
+| Registry | 镜像地址 |
+|---|---|
+| Docker Hub | `oinxen/lan-nav` |
+| GitHub Container Registry | `ghcr.io/inxen/lan-nav` |
+
+Docker Hub（国内拉取通常更快）：
+
+```bash
+docker run -d \
+  --name lan-nav \
+  -p 5725:5725 \
+  -v "$PWD/data:/data" \
+  --restart unless-stopped \
+  oinxen/lan-nav:latest
+```
+
+或 ghcr.io：
 
 ```bash
 docker run -d \
@@ -33,6 +51,8 @@ docker compose up -d
 
 - 访问首页：<http://localhost:5725>
 - 管理后台：<http://localhost:5725/admin.html>（仅私网 / 本机可进）
+
+> **维护者备注**：CI 推送 Docker Hub 依赖仓库 secret `DOCKERHUB_USERNAME`（= `oinxen`）与 `DOCKERHUB_TOKEN`（Read & Write 的 PAT）。**未配置时 tag 构建会失败**，且因为与 ghcr 在同一个 job，那一次 ghcr 镜像也不会产出。
 
 ## 从源码运行
 
@@ -93,12 +113,18 @@ location / {
 }
 ```
 
-## 构建镜像（本地）
+## 本地构建镜像（仅调试用）
+
+正式镜像是 CI 自动产出的，**不要手工推到 Docker Hub / ghcr**（历史上手工推过一次，结果版本与代码脱节、命令也没留下记录）。
+
+本地只想跑一下验证：
 
 ```bash
-docker build -t lan-nav .
-docker run -d -p 5725:5725 -v "$PWD/data:/data" lan-nav
+docker build -t lan-nav:dev .
+docker run -d -p 5725:5725 -v "$PWD/data:/data" lan-nav:dev
 ```
+
+要发新镜像就提交代码并打 tag（`git tag -a v1.2.3 -m "v1.2.3" && git push origin v1.2.3`），CI 会自动出 `1.2.3` + `latest` 两条多架构镜像，并附上各平台原生二进制到 Release。
 
 ## 许可证
 
