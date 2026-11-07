@@ -42,12 +42,24 @@ jobs:
       - name: Log in to Docker Hub
         # 凭据在仓库 secret 里：DOCKERHUB_USERNAME=oinxen，DOCKERHUB_TOKEN=PAT(Read & Write)
         # 注意 Docker Hub 用户名是 oinxen，与 GitHub 的 inxen 不同名，别配错
+        #
+        # 这里用 shell 调 docker login 而不是 docker/login-action：
+        # secret 里若混入换行/首尾空白，会被原样带进 Authorization 头，
+        # Docker Hub 会直接返回 "malformed HTTP Authorization header"。
+        # 先剔除 \r\n 与首尾空白再登录，规避这类不可见的粘贴污染。
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: docker.io
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          U=$(printf '%s' "${DH_USER}" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          T=$(printf '%s' "${DH_TOKEN}" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          if [ -z "${U}" ] || [ -z "${T}" ]; then
+            echo "::error title=Docker Hub 凭据为空::DOCKERHUB_USERNAME 或 DOCKERHUB_TOKEN 清洗后为空，请检查仓库 secret"
+            exit 1
+          fi
+          printf '%s' "${T}" | docker login --username "${U}" --password-stdin docker.io
 
       - name: Extract metadata (tags & labels)
         id: meta
