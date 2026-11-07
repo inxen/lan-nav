@@ -39,7 +39,7 @@ jobs:
         # 两个 secret 都就绪时本步骤自动跳过，不影响正常构建。
         if: env.HAS_DOCKERHUB != 'true'
         run: |
-          echo "::error title=缺少 Docker Hub 凭据::DOCKERHUB_USERNAME 已配置=${{ secrets.DOCKERHUB_USERNAME != '' }}，DOCKERHUB_TOKEN 已配置=${{ secrets.DOCKERHUB_TOKEN != '' }}；疑似改名：DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME != '' }}，DOCKER_HUB_TOKEN=${{ secrets.DOCKER_HUB_TOKEN != '' }}，DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME != '' }}，DOCKER_TOKEN=${{ secrets.DOCKER_TOKEN != '' }}，DOCKERHUB_PAT=${{ secrets.DOCKERHUB_PAT != '' }}。请确认已加在 Settings → Secrets and variables → Actions 的 Repository secrets，而不是 Environment secrets 或 Variables。"
+          echo "::error title=缺少 Docker Hub 凭据::Repository secrets 全部为空：DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME != '' }}，DOCKERHUB_TOKEN=${{ secrets.DOCKERHUB_TOKEN != '' }}，DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME != '' }}，DOCKER_HUB_TOKEN=${{ secrets.DOCKER_HUB_TOKEN != '' }}，DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME != '' }}，DOCKER_TOKEN=${{ secrets.DOCKER_TOKEN != '' }}，DOCKERHUB_PAT=${{ secrets.DOCKERHUB_PAT != '' }}。// 是否误加到 Variables：vars.DOCKERHUB_USERNAME=${{ vars.DOCKERHUB_USERNAME != '' }}，vars.DOCKERHUB_TOKEN=${{ vars.DOCKERHUB_TOKEN != '' }}，vars.DOCKER_USERNAME=${{ vars.DOCKER_USERNAME != '' }}，vars.DOCKER_TOKEN=${{ vars.DOCKER_TOKEN != '' }}。// 仓库=${{ github.repository }}，触发者=${{ github.actor }}"
           exit 1
 
       - name: Log in to GitHub Container Registry
