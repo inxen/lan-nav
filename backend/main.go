@@ -86,6 +86,7 @@ func main() {
 		admin.POST("/sites", h.createSite)
 		admin.PUT("/sites/:id", h.updateSite)
 		admin.DELETE("/sites/:id", h.deleteSite)
+		admin.POST("/sites/reorder", h.reorderSites)
 
 		// Logo 上传 & URL 抓取
 		admin.POST("/upload-logo", handleUploadLogo(logosAbs))

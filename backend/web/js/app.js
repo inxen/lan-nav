@@ -22,7 +22,16 @@ async function init() {
     render();
     initScrollProgress();
   } catch (e) {
-    $('#loading').textContent = '加载失败: ' + e.message;
+    const el = $('#app');
+    if (el) {
+      el.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+        </div>
+        <div class="empty-title">数据加载失败</div>
+        <div class="empty-desc">${esc(e.message)}<br>请刷新页面重试，或检查服务是否正常运行。</div>
+      </div>`;
+    }
   }
 }
 
@@ -148,9 +157,19 @@ function render() {
 
   const groups = getVisibleGroups();
 
+  // 当前场景下可见的站点总数（用于标题下方元信息）
+  const totalSites = groups.reduce(
+    (n, g) => n + config.sites.filter(s => s.group_id === g.id).length, 0);
+
   let html = '';
   if (config.show_title) {
-    html += `<h1 class="home-title">${esc(config.site_title || '我的导航')}</h1>`;
+    html += `<header class="home-header">
+      <h1 class="home-title">${esc(config.site_title || '我的导航')}</h1>
+      <p class="home-sub">
+        <span>${sceneLabel(scene)}</span>
+        ${totalSites > 0 ? `<span class="dot"></span><span>${totalSites} 个站点</span>` : ''}
+      </p>
+    </header>`;
   }
   html += `
     <div class="search-bar">
@@ -168,18 +187,29 @@ function render() {
             </button>`).join('')}
           </div>
         </div>
-        <input class="search-input" id="search-input" placeholder="输入关键词搜索..." autocomplete="off"
+        <input class="search-input" id="search-input" placeholder="输入关键词搜索..." autocomplete="off" aria-label="搜索关键词"
           oninput="onSearchInput()" onkeydown="onSearchKey(event)" onfocus="onSearchInput()">
-        <button class="search-btn" onclick="doSearch()" aria-label="搜索"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+        <button class="search-btn" onclick="doSearch()" aria-label="搜索"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
       </div>
       <div class="suggest-list" id="suggest-list"></div>
     </div>
   `;
 
-  if (groups.length === 0) {
-    html += `<div class="groups"><div class="loading">暂无站点</div></div>`;
+  if (totalSites === 0) {
+    const emptyIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M17.5 14v7M14 17.5h7"/></svg>`;
+    const emptyDesc = scene === 'lan'
+      ? '进入 <a href="/admin.html">管理后台</a> 添加第一个书签，或为分组补充站点。'
+      : '当前网络环境下没有可显示的站点，请回到局域网访问。';
+    html += `<div class="groups">
+      <div class="empty-state">
+        <div class="empty-icon">${emptyIcon}</div>
+        <div class="empty-title">这里还没有站点</div>
+        <div class="empty-desc">${emptyDesc}</div>
+      </div>
+    </div>`;
   } else {
     html += `<div class="groups">`;
+    let cardIdx = 0;
     for (const g of groups) {
       const sites = config.sites
         .filter(s => s.group_id === g.id)
@@ -191,7 +221,7 @@ function render() {
         <div class="group-section${showGroupName ? '' : ' no-title'}">
           ${titleHtml}
           <div class="site-grid">
-            ${sites.map(s => renderSiteCard(s)).join('')}
+            ${sites.map(s => renderSiteCard(s, cardIdx++)).join('')}
           </div>
         </div>
       `;
@@ -253,13 +283,15 @@ function faviconUrl(rawUrl) {
   }
 }
 
-function renderSiteCard(s) {
+function renderSiteCard(s, idx = 0) {
   const src = s.logo_url || faviconUrl(s.url);
   const showName = config.show_site_name !== false; // 默认显示
   const nameHtml = showName ? `<div class="site-name">${esc(s.name)}</div>` : '';
+  // 入场错峰：最多 12 级，避免长列表延迟过久
+  const delay = Math.min(idx, 12);
   return `
-    <a class="site-card${showName ? '' : ' no-name'}" href="${esc(s.url)}" target="_blank" rel="noopener" title="${esc(s.name)}">
-      <div class="site-logo-wrap"><img class="site-logo" src="${esc(src)}" alt="${esc(s.name)}" data-name="${esc(s.name)}" onerror="onLogoError(this)"></div>
+    <a class="site-card${showName ? '' : ' no-name'}" href="${esc(s.url)}" target="_blank" rel="noopener" title="${esc(s.name)}" style="--i:${delay}">
+      <div class="site-logo-wrap"><img class="site-logo" src="${esc(src)}" alt="${showName ? '' : esc(s.name)}" data-name="${esc(s.name)}" loading="lazy" decoding="async" draggable="false" onerror="onLogoError(this)"></div>
       ${nameHtml}
     </a>
   `;
@@ -428,6 +460,18 @@ function updateSuggestActive() {
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.search-bar')) hideSuggest();
   if (!e.target.closest('.engine-picker')) hideEngineMenu();
+});
+
+// 快捷键：在页面任意位置按 "/" 聚焦搜索框（不干扰输入状态）
+document.addEventListener('keydown', (e) => {
+  if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  const input = $('#search-input');
+  if (input) {
+    e.preventDefault();
+    input.focus();
+  }
 });
 
 function esc(s) {

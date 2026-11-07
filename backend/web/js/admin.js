@@ -124,6 +124,7 @@ async function init() {
 
   try {
     await reload();
+    initSort();
     initScrollProgress();
   } catch (e) {
     if (confirm('加载失败，可能不在局域网环境。返回首页？')) location.href = '/';
@@ -159,6 +160,12 @@ function initScrollProgress() {
 }
 
 function switchTab(name) {
+  // 切换标签页时放弃未保存的排序，避免界面顺序与服务端不一致
+  if (sortMode) {
+    sortMode = false;
+    sortSnapshot = null;
+    renderSites();
+  }
   $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   $$('.panel').forEach(p => p.classList.toggle('show', p.id === 'panel-' + name));
 }
@@ -329,56 +336,286 @@ async function uploadBg() {
   }
 }
 
-// ===== 站点书签（按分组 + 紧凑芯片 + 点图标弹菜单）=====
+// ===== 站点书签（按分组 + 紧凑芯片 + 点图标弹菜单 + 拖动排序）=====
+let sortMode = false; // 排序模式开关：开启后卡片可拖动，点击图标不再弹菜单
+
 function renderSites() {
   closeSiteMenu();
   const list = $('#site-list');
   const groups = [...config.groups].sort((a, b) => a.sort_order - b.sort_order);
   const sites = config.sites || [];
-  let html = '';
+  if (!sites.length) {
+    sortMode = false;
+    list.innerHTML = '<div class="list-item"><span class="list-meta">暂无站点，先在上方添加第一个书签</span></div>';
+    return;
+  }
+
+  let body = '';
   // 有站点的分组才渲染，空分组不占空间
   for (const g of groups) {
     const gsites = sites.filter(s => s.group_id === g.id).sort((a, b) => a.sort_order - b.sort_order);
     if (!gsites.length) continue;
-    html += `
+    body += `
       <div class="sg-section">
         <div class="sg-header">
           <span class="sg-name">${esc(g.name)}</span>
           <span class="sg-count">${gsites.length}</span>
         </div>
-        <div class="sg-grid">${gsites.map(chipHTML).join('')}</div>
+        <div class="sg-grid" data-group="${g.id}">${gsites.map(chipHTML).join('')}</div>
       </div>`;
   }
-  // 未分组
+  // 未分组（含分组已被删除、group_id 已失效的站点，按首个站点的实际 group_id 归组）
   const groupedIds = new Set(groups.map(g => g.id));
   const ungrouped = sites.filter(s => !groupedIds.has(s.group_id)).sort((a, b) => a.sort_order - b.sort_order);
   if (ungrouped.length) {
-    html += `
+    const ugKey = ungrouped[0].group_id;
+    body += `
       <div class="sg-section">
         <div class="sg-header">
           <span class="sg-name">未分组</span>
           <span class="sg-count">${ungrouped.length}</span>
         </div>
-        <div class="sg-grid">${ungrouped.map(chipHTML).join('')}</div>
+        <div class="sg-grid" data-group="${ugKey}">${ungrouped.map(chipHTML).join('')}</div>
       </div>`;
   }
-  list.innerHTML = html
-    ? `<div class="sites-by-group">${html}</div>`
-    : '<div class="list-item"><span class="list-meta">暂无站点</span></div>';
+
+  const hint = sortMode ? '拖动卡片调整顺序，完成后点保存' : `共 ${sites.length} 个站点`;
+  const actions = sortMode
+    ? `<button type="button" class="btn-sort-ghost" data-act="cancel-sort">取消</button>
+       <button type="button" class="btn-sort active" data-act="save-sort">保存</button>`
+    : `<button type="button" class="btn-sort" data-act="toggle-sort">排序</button>`;
+  list.innerHTML = `
+    <div class="list-toolbar">
+      <span class="list-toolbar-title${sortMode ? ' hint' : ''}">${hint}</span>
+      <span class="list-toolbar-actions">${actions}</span>
+    </div>
+    <div class="sites-by-group${sortMode ? ' sorting' : ''}">${body}</div>`;
 }
 
 // 单个站点芯片：图标（点击弹菜单）+ 名称
+// data-group 用于拖动排序时校验，避免跨分组提交
 function chipHTML(s) {
   const src = logoSrc(s);
   const initial = (s.name || '?').trim().charAt(0).toUpperCase();
   return `
-    <div class="site-chip" title="${esc(s.url)}">
+    <div class="site-chip" data-id="${s.id}" data-group="${s.group_id}" title="${esc(s.url)}">
       <button class="chip-icon" onclick="openSiteMenu(event, ${s.id})" aria-label="操作菜单" title="点击图标进行编辑或删除">
         <img src="${esc(src)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
         <span class="chip-fallback" style="display:none">${esc(initial)}</span>
       </button>
       <span class="chip-name">${esc(s.name)}</span>
     </div>`;
+}
+
+// ===== 拖动排序 =====
+// 交互约定：
+//   1. 点「排序」进入排序模式，卡片才可拖动
+//   2. 拖动只重排本地 DOM，全程不发请求（网络抖动也不会出现改到一半的状态）
+//   3. 调整完点「保存」才提交，一次性把有变化的分组发给服务端；点「取消」丢弃改动
+//   4. 服务端按事务写入全部分组，要么全成功要么全回滚
+let sortBound = false;
+let dragState = null;
+let sortSnapshot = null; // 进入排序模式时的顺序快照 { groupKey: [id...] }
+let savingSort = false;
+
+function initSort() {
+  if (sortBound) return;
+  sortBound = true;
+  const list = $('#site-list');
+  if (!list) return;
+
+  list.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const act = btn.dataset.act;
+    if (act === 'toggle-sort') enterSort();
+    else if (act === 'save-sort') saveSort();
+    else if (act === 'cancel-sort') cancelSort();
+  });
+
+  list.addEventListener('pointerdown', onChipDown);
+  window.addEventListener('pointermove', onChipMove, { passive: false });
+  window.addEventListener('pointerup', onChipUp);
+  window.addEventListener('pointercancel', onChipUp);
+}
+
+function enterSort() {
+  sortMode = true;
+  sortSnapshot = readOrder();
+  renderSites();
+  toast('拖动卡片调整顺序，完成后点「保存」生效');
+}
+
+function cancelSort() {
+  const changed = hasOrderChanged();
+  sortMode = false;
+  sortSnapshot = null;
+  renderSites();
+  if (changed) toast('已放弃本次调整');
+}
+
+// 读取当前 DOM 中各分组的站点顺序
+function readOrder() {
+  const map = {};
+  $$('#site-list .sg-grid').forEach(grid => {
+    map[grid.dataset.group] = [...grid.querySelectorAll('.site-chip')].map(el => el.dataset.id);
+  });
+  return map;
+}
+
+// 与快照比对，返回顺序有变化的分组 key
+function changedGroups() {
+  if (!sortSnapshot) return [];
+  const now = readOrder();
+  return Object.keys(now).filter(k => now[k].join(',') !== (sortSnapshot[k] || []).join(','));
+}
+
+function hasOrderChanged() {
+  return changedGroups().length > 0;
+}
+
+async function saveSort() {
+  if (savingSort) return;
+  const changed = changedGroups();
+  if (!changed.length) {
+    sortMode = false;
+    sortSnapshot = null;
+    renderSites();
+    toast('顺序没有变化');
+    return;
+  }
+
+  // 防御：同一分组内不应出现不同 group_id 的站点（分组被删后可能残留脏数据）
+  for (const key of changed) {
+    const grid = document.querySelector('#site-list .sg-grid[data-group="' + key + '"]');
+    if (!grid) continue;
+    const gids = new Set([...grid.querySelectorAll('.site-chip')].map(el => el.dataset.group));
+    if (gids.size > 1) {
+      toast('该分组数据异常，请刷新页面后重试', 'error');
+      return;
+    }
+  }
+
+  const now = readOrder();
+  const groups = changed.map(k => ({
+    group_id: parseInt(k, 10) || 0,
+    ids: now[k].map(Number),
+  }));
+
+  savingSort = true;
+  const btn = document.querySelector('[data-act="save-sort"]');
+  if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+  try {
+    await api('POST', '/api/admin/sites/reorder', { groups });
+    // 写回本地缓存，避免下次 reload 前读到旧顺序
+    groups.forEach(g => {
+      const order = new Map(g.ids.map((id, i) => [String(id), i]));
+      (config.sites || []).forEach(s => {
+        if (order.has(String(s.id))) s.sort_order = order.get(String(s.id));
+      });
+    });
+    sortMode = false;
+    sortSnapshot = null;
+    renderSites();
+    toast('排序已保存');
+  } catch (err) {
+    // 保留当前界面顺序，用户可直接重试，不必重新拖
+    toast('保存失败：' + err.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '保存'; }
+  } finally {
+    savingSort = false;
+  }
+}
+
+function onChipDown(e) {
+  if (!sortMode) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const chip = e.target.closest('.site-chip');
+  if (!chip) return;
+  const grid = chip.closest('.sg-grid');
+  if (!grid) return;
+  const r = chip.getBoundingClientRect();
+  dragState = {
+    chip, grid,
+    pointerId: e.pointerId,
+    startX: e.clientX, startY: e.clientY,
+    left: r.left, top: r.top,
+    width: r.width, height: r.height,
+    activated: false,
+    placeholder: null,
+  };
+}
+
+function onChipMove(e) {
+  const d = dragState;
+  if (!d || e.pointerId !== d.pointerId) return;
+  const dx = e.clientX - d.startX;
+  const dy = e.clientY - d.startY;
+
+  if (!d.activated) {
+    if (Math.hypot(dx, dy) < 5) return; // 位移阈值，避免点击被误判为拖动
+    activateDrag(d);
+  }
+  e.preventDefault();
+
+  d.chip.style.left = (d.left + dx) + 'px';
+  d.chip.style.top = (d.top + dy) + 'px';
+
+  // 命中测试找插入点；拖动中的卡片 pointer-events:none，不会挡住探测
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const target = under && under.closest && under.closest('.site-chip');
+  if (target && target !== d.chip && target.parentNode === d.grid) {
+    const r = target.getBoundingClientRect();
+    const sameRow = e.clientY >= r.top && e.clientY <= r.bottom;
+    const after = sameRow ? e.clientX > r.left + r.width / 2 : e.clientY > r.top + r.height / 2;
+    d.grid.insertBefore(d.placeholder, after ? target.nextSibling : target);
+  }
+}
+
+function activateDrag(d) {
+  d.activated = true;
+  const ph = document.createElement('div');
+  ph.className = 'site-chip-placeholder';
+  ph.style.width = d.width + 'px';
+  ph.style.height = d.height + 'px';
+  d.grid.insertBefore(ph, d.chip.nextSibling);
+  d.placeholder = ph;
+
+  // 把卡片挂到 body 下再 fixed 定位。
+  // 若留在网格里，任何带 transform / filter / backdrop-filter / animation 的祖先
+  // （管理页的 .panel 有 fadeUp 动画、.form 有 backdrop-filter）都会成为 fixed 的
+  // 包含块，left/top 用的却是视口坐标，卡片就会与指针错开、表现为向右下偏移。
+  document.body.appendChild(d.chip);
+
+  d.chip.style.width = d.width + 'px';
+  d.chip.style.height = d.height + 'px';
+  d.chip.style.left = d.left + 'px';
+  d.chip.style.top = d.top + 'px';
+  d.chip.classList.add('dragging');
+  document.body.classList.add('is-dragging');
+}
+
+function onChipUp(e) {
+  const d = dragState;
+  if (!d || e.pointerId !== d.pointerId) return;
+  dragState = null;
+  if (!d.activated) return; // 只是点击，不处理
+
+  d.chip.classList.remove('dragging');
+  if (d.placeholder && d.placeholder.parentNode) {
+    // 把卡片从 body 移回网格中的占位位置
+    d.placeholder.parentNode.insertBefore(d.chip, d.placeholder);
+    d.placeholder.remove();
+  } else {
+    d.grid.appendChild(d.chip); // 兜底：占位框丢失时塞回网格末尾，避免卡片留在 body 上
+  }
+  // 清掉 fixed 定位与显式尺寸，让卡片回到网格流中
+  d.chip.style.left = '';
+  d.chip.style.top = '';
+  d.chip.style.width = '';
+  d.chip.style.height = '';
+  document.body.classList.remove('is-dragging');
+  // 这里不提交：等用户点「保存」统一落库
 }
 
 // ===== 小弹窗菜单（点击图标触发，编辑/删除）=====
@@ -408,6 +645,7 @@ function ensureMenu() {
 }
 
 function openSiteMenu(e, id) {
+  if (sortMode) return; // 排序模式下点击图标不弹菜单
   e.stopPropagation();
   ensureMenu();
   menuEl.dataset.id = id;
@@ -733,6 +971,25 @@ async function removeEngine(id) {
 }
 
 // ===== 工具函数 =====
+
+// 轻量提示条：替代 alert，不打断操作（排序保存结果用它反馈）
+let toastTimer = null;
+function toast(msg, type) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.className = 'toast';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.className = 'toast show' + (type === 'error' ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), type === 'error' ? 4200 : 2200);
+}
+
 async function api(method, url, body) {
   const opts = { method, headers: {} };
   if (body) {

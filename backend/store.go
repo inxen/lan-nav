@@ -293,6 +293,56 @@ func (s *Store) DeleteSite(id int) error {
 	return err
 }
 
+// ReorderGroup 一个分组的目标顺序
+type ReorderGroup struct {
+	GroupID int
+	IDs     []int // 按目标顺序排列的站点 id
+}
+
+// ReorderSites 按传入顺序重写各分组内站点的 sort_order（0..n-1）。
+// 所有分组放在同一个事务里提交：拖动排序是用户点「保存」触发的一次整体操作，
+// 部分成功会让界面顺序与服务端不一致，刷新后无法还原，因此必须整体成功或整体回滚。
+// WHERE 附带 group_id 限定，即使前端传错 id 也不会误改其他分组的站点。
+func (s *Store) ReorderSites(groups []ReorderGroup) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 先核对每个分组的实际站点数，与提交列表不符说明前端数据已过期，整体拒绝
+	for _, g := range groups {
+		var total int
+		if err := tx.QueryRow("SELECT COUNT(*) FROM sites WHERE group_id=?", g.GroupID).Scan(&total); err != nil {
+			return err
+		}
+		if total != len(g.IDs) {
+			return fmt.Errorf("分组 %d 的站点数量已变化（服务端 %d 个，提交 %d 个），请刷新后重试",
+				g.GroupID, total, len(g.IDs))
+		}
+	}
+
+	stmt, err := tx.Prepare("UPDATE sites SET sort_order=? WHERE id=? AND group_id=?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, g := range groups {
+		for i, id := range g.IDs {
+			res, err := stmt.Exec(i, id, g.GroupID)
+			if err != nil {
+				return err
+			}
+			// 影响行数为 0 说明该 id 并不属于这个分组：数量校验挡不住"组内数量恰好相等
+			// 但混入了别组 id"的情况，不拦住会静默跳过、把组内顺序改坏。
+			if n, err := res.RowsAffected(); err == nil && n == 0 {
+				return fmt.Errorf("站点 %d 不属于分组 %d，已取消保存", id, g.GroupID)
+			}
+		}
+	}
+	return tx.Commit()
+}
+
 // GetConfig 一次性返回全部配置
 func (s *Store) GetConfig() (*ConfigResponse, error) {
 	engines, err := s.GetEngines()

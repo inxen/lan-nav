@@ -175,6 +175,65 @@ func (h *Handlers) deleteSite(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+// ---- 拖动排序 ----
+
+// POST /api/admin/sites/reorder — 保存拖动排序结果（可一次提交多个分组）。
+// 前端在拖动过程中只调整本地 DOM，用户点「保存」时才发这一次请求；
+// 服务端把全部分组放进同一事务，避免出现"改了一半"的中间态。
+func (h *Handlers) reorderSites(c *gin.Context) {
+	var body struct {
+		Groups []struct {
+			GroupID int   `json:"group_id"`
+			IDs     []int `json:"ids"`
+		} `json:"groups"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if len(body.Groups) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "没有需要保存的排序"})
+		return
+	}
+
+	groups := make([]ReorderGroup, 0, len(body.Groups))
+	seenGroup := make(map[int]bool, len(body.Groups))
+	for _, g := range body.Groups {
+		// 0 表示未分组，是合法分组
+		if g.GroupID < 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效的分组"})
+			return
+		}
+		if seenGroup[g.GroupID] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "同一分组重复提交"})
+			return
+		}
+		seenGroup[g.GroupID] = true
+		if len(g.IDs) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "排序列表为空"})
+			return
+		}
+		// 去重：重复 id 会让后写的 sort_order 覆盖前一条，最终顺序不可预期
+		seen := make(map[int]bool, len(g.IDs))
+		ids := make([]int, 0, len(g.IDs))
+		for _, id := range g.IDs {
+			if id <= 0 || seen[id] {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "排序列表包含无效或重复的站点"})
+				return
+			}
+			seen[id] = true
+			ids = append(ids, id)
+		}
+		groups = append(groups, ReorderGroup{GroupID: g.GroupID, IDs: ids})
+	}
+
+	if err := h.store.ReorderSites(groups); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 // ---- 其他设置 ----
 
 // PUT /api/admin/settings — 更新站点名称等全局设置

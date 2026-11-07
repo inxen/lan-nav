@@ -2,13 +2,30 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
   <title>导航首页</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <div class="home" id="app">
-    <div class="loading" id="loading">加载中...</div>
+    <!-- 首屏骨架：结构与真实内容一致，避免加载时的布局跳动 -->
+    <div class="skeleton" id="loading">
+      <div class="sk sk-title"></div>
+      <div class="sk sk-sub"></div>
+      <div class="sk sk-bar"></div>
+      <div class="sk-group">
+        <div class="sk sk-line"></div>
+        <div class="sk-grid">
+          <div class="sk sk-card"></div>
+          <div class="sk sk-card"></div>
+          <div class="sk sk-card"></div>
+          <div class="sk sk-card"></div>
+          <div class="sk sk-card"></div>
+          <div class="sk sk-card"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="/js/app.js"></script>
