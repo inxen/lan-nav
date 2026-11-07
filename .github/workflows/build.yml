@@ -20,6 +20,9 @@ permissions:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    # secrets 上下文不能用于 step 级 if，需在 job 级 env 里转成布尔字符串再判断
+    env:
+      HAS_DOCKERHUB: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,7 +37,7 @@ jobs:
       - name: Diagnose Docker Hub secrets
         # 临时诊断（排查完即删）：只打印"是否为空"，绝不打印值。
         # 两个 secret 都就绪时本步骤自动跳过，不影响正常构建。
-        if: ${{ secrets.DOCKERHUB_USERNAME == '' || secrets.DOCKERHUB_TOKEN == '' }}
+        if: env.HAS_DOCKERHUB != 'true'
         run: |
           echo "::error title=缺少 Docker Hub 凭据::DOCKERHUB_USERNAME 已配置=${{ secrets.DOCKERHUB_USERNAME != '' }}，DOCKERHUB_TOKEN 已配置=${{ secrets.DOCKERHUB_TOKEN != '' }}；疑似改名：DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME != '' }}，DOCKER_HUB_TOKEN=${{ secrets.DOCKER_HUB_TOKEN != '' }}，DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME != '' }}，DOCKER_TOKEN=${{ secrets.DOCKER_TOKEN != '' }}，DOCKERHUB_PAT=${{ secrets.DOCKERHUB_PAT != '' }}。请确认已加在 Settings → Secrets and variables → Actions 的 Repository secrets，而不是 Environment secrets 或 Variables。"
           exit 1
