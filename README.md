@@ -52,7 +52,7 @@ docker compose up -d
 - 访问首页：<http://localhost:5725>
 - 管理后台：<http://localhost:5725/admin.html>（仅私网 / 本机可进）
 
-> **维护者备注**：CI 推送 Docker Hub 依赖仓库 secret `DOCKERHUB_USERNAME`（= `oinxen`）与 `DOCKERHUB_TOKEN`（Read & Write 的 PAT）。**未配置时 tag 构建会失败**，且因为与 ghcr 在同一个 job，那一次 ghcr 镜像也不会产出。
+> **维护者备注**：CI 推送 Docker Hub **只需要一个**仓库 secret `DOCKERHUB_TOKEN`（Docker Hub 账号 `oinxen` 的 Read & Write PAT）。用户名在 workflow 里写死为 `oinxen`——它本就是公开信息，放进 secret 反而容易因为值不干净触发 `malformed HTTP Authorization header`，排查成本极高。**未配置 token 时构建会失败**，且因为与 ghcr 在同一个 job，那一次 ghcr 镜像也不会产出。
 
 ## 从源码运行
 
