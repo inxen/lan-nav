@@ -20,9 +20,6 @@ permissions:
 jobs:
   docker:
     runs-on: ubuntu-latest
-    # secrets 上下文不能用于 step 级 if，需在 job 级 env 里转成布尔字符串再判断
-    env:
-      HAS_DOCKERHUB: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,14 +30,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Diagnose Docker Hub secrets
-        # 临时诊断（排查完即删）：只打印"是否为空"，绝不打印值。
-        # 两个 secret 都就绪时本步骤自动跳过，不影响正常构建。
-        if: env.HAS_DOCKERHUB != 'true'
-        run: |
-          echo "::error title=缺少 Docker Hub 凭据::Repository secrets 全部为空：DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME != '' }}，DOCKERHUB_TOKEN=${{ secrets.DOCKERHUB_TOKEN != '' }}，DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME != '' }}，DOCKER_HUB_TOKEN=${{ secrets.DOCKER_HUB_TOKEN != '' }}，DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME != '' }}，DOCKER_TOKEN=${{ secrets.DOCKER_TOKEN != '' }}，DOCKERHUB_PAT=${{ secrets.DOCKERHUB_PAT != '' }}。// 是否误加到 Variables：vars.DOCKERHUB_USERNAME=${{ vars.DOCKERHUB_USERNAME != '' }}，vars.DOCKERHUB_TOKEN=${{ vars.DOCKERHUB_TOKEN != '' }}，vars.DOCKER_USERNAME=${{ vars.DOCKER_USERNAME != '' }}，vars.DOCKER_TOKEN=${{ vars.DOCKER_TOKEN != '' }}。// 仓库=${{ github.repository }}，触发者=${{ github.actor }}"
-          exit 1
 
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
