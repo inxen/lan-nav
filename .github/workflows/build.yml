@@ -123,6 +123,11 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
+          # 只取 release 任务产出的二进制。
+          # docker 任务使用 cache-to: type=gha 时，buildx 会在同一个 run 里留下一个
+          # <owner>~<repo>~xxxx.dockerbuild 内部 artifact；不加 pattern 会把它一并
+          # 下载并平铺进 dist，导致合并失败、Release 无法生成。
+          pattern: lan-nav-*
           path: dist
           merge-multiple: true
 
