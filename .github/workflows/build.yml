@@ -40,34 +40,24 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
-        # 凭据在仓库 secret 里：DOCKERHUB_USERNAME=oinxen，DOCKERHUB_TOKEN=PAT(Read & Write)
-        # 注意 Docker Hub 用户名是 oinxen，与 GitHub 的 inxen 不同名，别配错
+        # 凭据只从 secret DOCKERHUB_TOKEN 取（Read & Write 的 PAT）。
+        # 用户名直接写死：它本就是公开信息（镜像名 oinxen/lan-nav 里就有），
+        # 早先试过放进 secret，反而因为值不干净导致
+        # "malformed HTTP Authorization header"，排查成本极高。
         #
-        # 这里用 shell 调 docker login 而不是 docker/login-action：
-        # secret 里若混入换行/首尾空白，会被原样带进 Authorization 头，
-        # Docker Hub 会直接返回 "malformed HTTP Authorization header"。
-        # 先剔除 \r\n 与首尾空白再登录，规避这类不可见的粘贴污染。
+        # 用 shell 调 docker login 而非 docker/login-action：先剔除 token 里
+        # 可能混入的 \r\n 与首尾空白，避免不可见的粘贴污染带进 Authorization 头。
         if: github.event_name != 'pull_request'
         env:
           DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # 用户名就是公开的 oinxen（镜像名里已写死），不用 secret，排除用户名变量的干扰
           U=oinxen
           T=$(printf '%s' "${DH_TOKEN}" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
           if [ -z "${T}" ]; then
-            echo "::error title=Docker Hub token 为空::DOCKERHUB_TOKEN 清洗后为空"
+            echo "::error title=Docker Hub token 为空::仓库 secret DOCKERHUB_TOKEN 为空，请补上 Read & Write 的 PAT"
             exit 1
           fi
-          # 探测 1：直接向 Docker Hub 认证服务换取 push 权限的 token，只输出 HTTP 状态码
-          CODE=$(curl -s -o /dev/null -w '%{http_code}' -u "${U}:${T}" \
-            "https://auth.docker.io/token?service=registry.docker.io&scope=repository:oinxen/lan-nav:push,pull")
-          echo "认证接口 HTTP 状态码: ${CODE}"
-          if [ "${CODE}" != "200" ]; then
-            echo "::error title=Docker Hub 凭据无效::认证接口返回 ${CODE}（401=token 错误或已吊销，403=权限不足）"
-            exit 1
-          fi
-          # 探测 2：走 docker 登录
           printf '%s' "${T}" | docker login --username "${U}" --password-stdin docker.io
 
       - name: Extract metadata (tags & labels)
