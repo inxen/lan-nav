@@ -49,16 +49,25 @@ jobs:
         # 先剔除 \r\n 与首尾空白再登录，规避这类不可见的粘贴污染。
         if: github.event_name != 'pull_request'
         env:
-          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
           DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           set -euo pipefail
-          U=$(printf '%s' "${DH_USER}" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          # 用户名就是公开的 oinxen（镜像名里已写死），不用 secret，排除用户名变量的干扰
+          U=oinxen
           T=$(printf '%s' "${DH_TOKEN}" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-          if [ -z "${U}" ] || [ -z "${T}" ]; then
-            echo "::error title=Docker Hub 凭据为空::DOCKERHUB_USERNAME 或 DOCKERHUB_TOKEN 清洗后为空，请检查仓库 secret"
+          if [ -z "${T}" ]; then
+            echo "::error title=Docker Hub token 为空::DOCKERHUB_TOKEN 清洗后为空"
             exit 1
           fi
+          # 探测 1：直接向 Docker Hub 认证服务换取 push 权限的 token，只输出 HTTP 状态码
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' -u "${U}:${T}" \
+            "https://auth.docker.io/token?service=registry.docker.io&scope=repository:oinxen/lan-nav:push,pull")
+          echo "认证接口 HTTP 状态码: ${CODE}"
+          if [ "${CODE}" != "200" ]; then
+            echo "::error title=Docker Hub 凭据无效::认证接口返回 ${CODE}（401=token 错误或已吊销，403=权限不足）"
+            exit 1
+          fi
+          # 探测 2：走 docker 登录
           printf '%s' "${T}" | docker login --username "${U}" --password-stdin docker.io
 
       - name: Extract metadata (tags & labels)
